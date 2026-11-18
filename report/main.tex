@@ -17,9 +17,8 @@
 
 \title{How Cheap Can Video Retrieval Be?\\A Zero-Shot, CPU-Only Cost--Accuracy Study}
 
-\author{\IEEEauthorblockN{Chengxuan Xie}
-\IEEEauthorblockA{School of Computer Science\\
-Nanchang University\\
+\author{\IEEEauthorblockN{Chengxuan Xie}\\[2pt]
+\IEEEauthorblockA{Nanchang University\\
 Nanchang, China\\
 \texttt{chengxuan\_xie@email.ncu.edu.cn}}}
 
@@ -156,34 +155,33 @@ produced it.
 \centering
 \resizebox{\columnwidth}{!}{%
 \begin{tikzpicture}[
-  font=\footnotesize,
+  font=\small,
   box/.style={draw, rounded corners=2pt, align=center, minimum height=9mm,
-              inner sep=2pt, text width=20mm, fill=black!4},
+              inner sep=2pt, text width=16mm, fill=black!4},
   net/.style={box, fill=black!16},
   arr/.style={-{Latex[length=2mm,width=1.5mm]}, thick},
-  lab/.style={font=\tiny, text=black!65, align=center}
+  lab/.style={font=\footnotesize, text=black!70, align=center}
 ]
 % ---- offline: indexing ----
 \node (v) [box] {Video\\clip};
-\node (s) [box, right=6mm of v] {Sample\\1\,fps};
-\node (e) [net, right=6mm of s] {ViT-B/32\\frozen};
-\node (m) [box, right=6mm of e] {Matrix\\$N\!\times\!512$};
-\node [lab, above=1.2mm of s] {1 of 30 frames};
-\node [lab, above=1.2mm of e] {40\,ms/frame};
-\node [lab, above=1.2mm of m] {7.4\,MB per hour};
+\node (s) [box, right=3mm of v] {Sample\\1\,fps};
+\node (e) [net, right=3mm of s] {ViT-B/32\\frozen};
+\node (m) [box, right=3mm of e] {Matrix\\$N\!\times\!512$};
+\node [lab, above=1mm of s] {1 of 30 frames};
+\node [lab, above=1mm of e] {40\,ms/frame};
+\node [lab, above=1mm of m] {7.4\,MB per hour};
 \draw [arr] (v) -- (s);
 \draw [arr] (s) -- (e);
 \draw [arr] (e) -- (m);
 % ---- online: one query ----
-\node (q) [box, below=15mm of v] {Text\\query};
-\node (t) [net, right=6mm of q] {Text\\tower};
-\node (c) [box, below=15mm of e, xshift=13mm, text width=45mm]
-      {cosine, then max over frames\\
-       $\rightarrow$ top-$K$ clips};
+\node (q) [box, below=14mm of v] {Text\\query};
+\node (t) [net, right=3mm of q] {Text\\tower};
+\node (c) [box, right=3mm of t, text width=40mm]
+      {cosine similarity,\\ then max $\rightarrow$ top-$K$};
 \node [lab, below=1mm of t] {60--100\,ms};
 \draw [arr] (q) -- (t);
-\draw [arr] (t) -- (c.west);
-\draw [arr] (m.south) -- (c.north -| m.south);
+\draw [arr] (t) -- (c);
+\draw [arr] (m.south) -- (m.south |- c.north);
 \end{tikzpicture}}
 \caption{The pipeline. Only the two shaded boxes run a neural network, and both are used
 frozen: no training and no fine-tuning. Offline, each clip is decoded at 1\,fps and every
@@ -287,7 +285,7 @@ points.
 \caption{Cost per hour of video for three sampling rates. The 30\,fps row is projected from the
 frame count; the other two are measured.}
 \label{tab:perhour}
-\begin{tabular}{@{}lccc@{}}
+\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lccc@{}}
 \toprule
 Configuration & Frames & Indexing time & Index size \\
 \midrule
@@ -295,7 +293,7 @@ Configuration & Frames & Indexing time & Index size \\
 1\,fps (this work)       & 3{,}600   & 3.9--5.0\,min & 7.4\,MB \\
 0.25\,fps                & 900       & 1.0--1.3\,min & 1.8\,MB \\
 \bottomrule
-\end{tabular}
+\end{tabular*}
 \end{table}
 
 \subsection{Boundary of Validity}
@@ -365,7 +363,7 @@ indexing cost.
 \caption{MSR-VTT test 1k, 1\,fps, max aggregation. Random baseline is $K/N$ with $N=1{,}000$
 clips and one correct answer per query.}
 \label{tab:main}
-\begin{tabular}{@{}lccc@{}}
+\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lccc@{}}
 \toprule
 Metric & This work & Random & Gap \\
 \midrule
@@ -373,7 +371,7 @@ Recall@1  & 32.2\% & 0.1\% & 32.1\,pp \\
 Recall@5  & 55.6\% & 0.5\% & 55.1\,pp \\
 Recall@10 & 66.5\% & 1.0\% & 65.5\,pp \\
 \bottomrule
-\end{tabular}
+\end{tabular*}
 \end{table}
 
 Four independent checks support the implementation. The frame count per clip is 16.0, matching
@@ -404,7 +402,7 @@ within one standard error. A tighter budget can use 0.25\,fps, which is 3.7$\tim
 \caption{Sampling-rate ablation on MSR-VTT ($n=1{,}000$ queries). The standard error of
 Recall@1 is $\approx$1.5\,pp, so adjacent rows are not distinguishable.}
 \label{tab:fps}
-\begin{tabular}{@{}lcccccc@{}}
+\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lcccccc@{}}
 \toprule
 fps & Frames & Build (s) & Index (MB) & R@1 & R@5 & R@10 \\
 \midrule
@@ -413,7 +411,7 @@ fps & Frames & Build (s) & Index (MB) & R@1 & R@5 & R@10 \\
 0.5  &  8{,}285 &   544.1 & 16.97 & 31.0 & 56.4 & 65.3 \\
 0.25 &  4{,}344 &   277.5 &  8.90 & 30.7 & 55.0 & 64.1 \\
 \bottomrule
-\end{tabular}
+\end{tabular*}
 \end{table}
 
 \begin{figure}[t]
@@ -507,3 +505,4 @@ frames, where CPU-only search ceases to be appropriate.
 \bibliography{refs}
 
 \end{document}
+

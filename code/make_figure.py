@@ -1,4 +1,4 @@
-"""图 2：成本-精度曲线（报告里最重要的一张图）。
+﻿"""图 2：成本-精度曲线（报告里最重要的一张图）。
 
 数据只从 results/results.csv 读，不手填任何数字。
 
@@ -71,7 +71,7 @@ def main():
     ax.axhspan(base - SE_PP, base + SE_PP, color="#1f4e79", alpha=0.12,
                lw=0, zorder=1)
     ax.text(x[0] * 1.12, base + SE_PP + 0.5, r"$\pm$1 s.e. (1.5 pp)",
-            fontsize=6, color="#1f4e79")
+            fontsize=7, color="#1f4e79")
 
     # 参考指标 R@10
     ax.plot(x, [r["r10"] for r in rows], "s--", color="#a6611a", lw=1.0,
@@ -81,7 +81,7 @@ def main():
     for r in rows:
         ax.annotate(f"{r['fps']:g} fps", (r["sec"], r["r1"]),
                     textcoords="offset points", xytext=(0, -12),
-                    ha="center", fontsize=6, color="#333333")
+                    ha="center", fontsize=7, color="#333333")
 
     ax.set_xscale("log")
     ax.set_xlabel("Indexing time per 1,000 clips (s, log scale)")
@@ -93,14 +93,14 @@ def main():
     ax.xaxis.set_minor_formatter(NullFormatter())
     ax.xaxis.set_minor_locator(NullLocator())
     ax.grid(True, which="major", ls=":", lw=0.4, alpha=0.5)
-    ax.legend(frameon=False, loc="center right", fontsize=6.5)
+    ax.legend(frameon=False, loc="center right", fontsize=7)
 
     # 标出拐点
     knee = next((r for r in rows if abs(r["fps"] - 1.0) < 1e-9), None)
     if knee:
         ax.annotate("selected\noperating point", (knee["sec"], knee["r1"]),
                     textcoords="offset points", xytext=(6, 10),
-                    fontsize=6, color="#1f4e79",
+                    fontsize=7, color="#1f4e79",
                     arrowprops=dict(arrowstyle="-", lw=0.5, color="#1f4e79"))
 
     fig.tight_layout(pad=0.3)
