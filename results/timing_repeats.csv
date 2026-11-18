@@ -1,0 +1,5 @@
+run,config,frames,seconds,ms_per_frame,note
+1,UCF-101 | ViT-B/32 | 1.0 fps | max,2462,197.6,80,assistant run; run right after a 30-clip smoke test (partially warm page cache)
+2,UCF-101 | ViT-B/32 | 1.0 fps | max,2462,251.1,102,"user run #1; cold page cache, background downloads/VS Code active"
+3,UCF-101 | ViT-B/32 | 1.0 fps | max,2462,207.1,84,"user run #2; warm page cache, quieter machine"
+median,UCF-101 | ViT-B/32 | 1.0 fps | max,2462,207.1,84,spread 197.6-251.1 = 27%; differences below ~30% treated as noise

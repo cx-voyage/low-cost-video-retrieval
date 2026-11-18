@@ -1,0 +1,20 @@
+{
+  "protocol": "msrvtt",
+  "agg": "max",
+  "n_clips": 1000,
+  "n_queries": 1000,
+  "config": {
+    "fps": 0.25,
+    "model": "ViT-B-32",
+    "pretrained": "D:\\video-retrieval\\models\\clip_vitb32_laion2b.bin",
+    "max_frames": 30,
+    "n_clips": 1000,
+    "n_frames": 4344
+  },
+  "Recall@1": 0.307,
+  "random@1": 0.001,
+  "Recall@5": 0.55,
+  "random@5": 0.005,
+  "Recall@10": 0.641,
+  "random@10": 0.01
+}

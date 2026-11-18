@@ -1,0 +1,10 @@
+# Dependencies for the low-cost video retrieval system (Python 3.11)
+# Install:
+#   pip install -r code/requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+open_clip_torch>=2.24.0
+opencv-python>=4.8.0
+numpy>=1.24
+torch>=2.0
+torchvision>=0.15
+pillow>=10.0
+tqdm

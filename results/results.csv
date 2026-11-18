@@ -1,0 +1,10 @@
+date,dataset,model,pretrained,fps,agg,max_frames,n_clips,n_frames,build_seconds,ms_per_frame,index_mb,recall@1,recall@5,recall@10,rand@1,rand@5,rand@10,text_encode_ms,search_ms,note
+2026-11-17,ucf101_subset,ViT-B-32,laion2b_s34b_b79k,1.0,max,30,405,2462,207.1,84,5.04,0.900,0.900,0.900,0.100,0.411,0.655,60,1.2,"median of 3 repeat runs (197.6/207.1/251.1, 27% spread); see timing_repeats.csv"
+2026-11-17,ucf101_subset,ViT-B-32,laion2b_s34b_b79k,1.0,mean,30,405,2462,,,5.04,0.900,0.900,0.900,0.100,0.411,0.655,97,5.8,agg=mean (index reused); identical to max -> corpus not discriminative
+2026-11-17,ucf101_subset,ViT-B-32,laion2b_s34b_b79k,0.5,max,30,405,1342,120.5,90,2.75,0.900,0.900,0.900,0.100,0.411,0.655,,,"fps ablation; cost 1.6x lower than 1fps, recall unchanged"
+2026-11-17,ucf101_subset,ViT-B-32,laion2b_s34b_b79k,0.25,max,30,405,755,62.7,83,1.55,0.900,0.900,1.000,0.100,0.411,0.655,,,"fps ablation; cost 3.2x lower, R@1 unchanged, R@10 up (single-query flip, n=10 so +-10pp)"
+2026-11-17,msrvtt_1k,ViT-B-32,laion2b_s34b_b79k,1.0,max,30,1000,16036,1035.8,65,32.84,0.322,0.556,0.665,0.001,0.005,0.010,,,"MAIN RESULT: zero-shot, 1 correct answer per query; matches published zero-shot CLIP ViT-B/32 (~30-33 R@1)"
+2026-11-17,msrvtt_1k,ViT-B-32,laion2b_s34b_b79k,1.0,mean,30,1000,16036,,,32.84,0.315,0.550,0.669,0.001,0.005,0.010,,,"aggregation ablation; max vs mean diff <=1pp, below 1 SE (1.5pp), not significant"
+2026-11-17,msrvtt_1k,ViT-B-32,laion2b_s34b_b79k,0.5,max,30,1000,8285,544.1,66,16.97,0.310,0.564,0.653,0.001,0.005,0.010,,,"fps ablation; 1.9x cheaper than 1fps, -1.2pp R@1 (within noise)"
+2026-11-17,msrvtt_1k,ViT-B-32,laion2b_s34b_b79k,0.25,max,30,1000,4344,277.5,64,8.90,0.307,0.550,0.641,0.001,0.005,0.010,,,"fps ablation; 3.7x cheaper than 1fps, -1.5pp R@1 (= 1 SE, not significant)"
+2026-11-17,msrvtt_1k,ViT-B-32,laion2b_s34b_b79k,2.0,max,30,1000,22412,1759.8,78.5,45.9,0.322,0.569,0.668,0.001,0.005,0.01,,,fps ablation; 2.0 fps costs 1.7x more than 1.0 fps for +0.0pp R@1 / +0.3pp R@10 (within 1 SE) -> higher fps buys nothing

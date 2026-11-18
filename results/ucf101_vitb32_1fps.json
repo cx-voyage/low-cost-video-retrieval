@@ -1,0 +1,20 @@
+{
+  "protocol": "ucf",
+  "agg": "max",
+  "n_clips": 405,
+  "n_queries": 10,
+  "config": {
+    "fps": 1.0,
+    "model": "ViT-B-32",
+    "pretrained": "D:\\video-retrieval\\models\\clip_vitb32_laion2b.bin",
+    "max_frames": 30,
+    "n_clips": 405,
+    "n_frames": 2462
+  },
+  "Recall@1": 0.9,
+  "random@1": 0.1,
+  "Recall@5": 0.9,
+  "random@5": 0.4109,
+  "Recall@10": 0.9,
+  "random@10": 0.655
+}
