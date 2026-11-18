@@ -1,0 +1,24 @@
+# environments and caches
+.venv/
+.texlive/
+.hf_cache/
+
+# downloaded data and model weights (see README for how to fetch them)
+data/
+models/
+
+# python
+__pycache__/
+*.pyc
+
+# LaTeX build artifacts (the compiled main.pdf is committed)
+report/*.aux
+report/*.bbl
+report/*.blg
+report/*.log
+report/*.out
+report/*.toc
+report/missfont.log
+
+# third-party papers kept for reference only
+notes/papers/
