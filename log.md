@@ -1295,3 +1295,16 @@ vector space”）。理由：全文说了文本塔编码、与每帧点积，�
 这一句补的是机制链条，不是常识解释。
 
 **闸门**：7 页、0 错误、审计 0 DIFF / 0 SKIP。
+
+
+### 2026-11-20 Overleaf 的 1 条警告：字体形状 scit
+
+Overleaf 报 `Font shape 'OT1/ptm/m/scit' undefined`。原因：IEEEtran 的表格标题用小型大写
+（small caps），我在表 V 图注里写了 `\emph{Recall@1}`，叠加后需要“小型大写斜体”（scit），
+Times（ptm）没有该字形，于是替换并报警。已把 `\emph{}` 去掉，改为纯文本 Recall@1。
+
+**remaining warnings**：3 条 Underfull \hbox（LOVO 段 1 条、Setup 段 2 条），是“行拉得松”，
+不是错误，改动前就存在。试过去掉正文里的 `laion2b_s34b_b79k` 长字符串，结果引发
+Underfull \vbox（页面出现空隙），已回退。结论：这 3 条属于排版噪声，不再追。
+
+**闸门**：7 页、0 错误、0 字体警告、审计 0 DIFF / 0 SKIP。
