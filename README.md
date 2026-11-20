@@ -33,14 +33,14 @@ Indexing cost on a 4-core laptop CPU (Intel i5-1155G7, no discrete GPU):
 
 Two facts worth knowing when reading these numbers:
 
-* 32.2 % Recall@1 is within 1.5 pp of the 30.7–31.2 % that zero-shot CLIP ViT-B/32 pipelines
-  report on the same 1k split (Ventura, Schmid & Varol, *Learning text-to-video retrieval from
+* 32.2 % Recall@1 is within 1.5 pp of the 30.7 % that a frozen zero-shot CLIP ViT-B/32 baseline
+  reports on the same 1k split (Ventura, Schmid & Varol, *Learning text-to-video retrieval from
   image captioning*, arXiv:2404.17498, Table 5), and four independent checks (frame count,
   implied hit count, index size, random baseline) agree with the raw predictions. Supervised
   systems are far above this; the trade is deliberate.
 * Changing the sampling rate from 0.25 to 3.0 fps — the ceiling, because the stored clips are
   themselves 3 fps — moves Recall@1 by 1.7 pp (paired $p = 0.12$) while changing build cost by
-  14×. Recall@10 does fall by 2.4 pp at 0.25 fps ($p = 0.03$). **Frame rate is not the
+  14×. Recall@10 does fall by 2.4 pp at 0.25 fps (uncorrected $p = 0.03$). **Frame rate is not the
   bottleneck; the encoder is.**
 
 > `results/results.csv` is the single source of truth for every number above. If anything

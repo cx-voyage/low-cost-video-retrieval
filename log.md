@@ -1054,3 +1054,62 @@ falls from 37.3% to 35.5% at 0.25 fps (p=0.34)”。这是“预期”而非“�
 
 **终审结果**：7 页、0 错误、0 Overfull；审计 0 DIFF / 0 SKIP；
 双基准核对：results.csv 五行 × 五个关键数字在 log.md 中全部找到，0 缺失。
+
+
+### 2026-11-20 按外部评审意见逐条核对（D1–D7 + 3 处存疑 + 语句）
+
+**D1 LOVO 的 10³ 归因错了 → 已改**
+reviewer 说得对：LOVO 是**一次 ViT 前向**产出 K 个 patch 向量（原文 "0.08 seconds per frame"），
+我们的 65 ms 与它只差约 1.2×，10³ 应该是**存储向量数**而不是编码次数。
+§III-B 改为：“one vector per frame … LOVO keeps K≈2,040 object vectors per keyframe, so for the
+same video its index is three orders of magnitude larger, even though a single forward pass
+produces those vectors.”
+
+**D2 31.2 不是纯零样本 → 已改**
+Ventura Table 5 里 31.2 属于 CLIP4Clip（WiT = WebVid 训练），与本文“完全零训练”不同口径。
+摘要、§I、§III-B 统一改为“within 1.5 pp of the **30.7%** reported for a **frozen zero-shot**
+CLIP ViT-B/32 baseline”；README 同步。
+
+**D3 PyTorch 版本 → 不成立，不改**
+本机实测 `torch.__version__ = 2.15.0+cpu`，表 II 报的是实测环境，不是笔误。
+
+**D4 未写输入分辨率 → 已补**
+§III-A 加 “resized to 224×224”。
+
+**D5 “29 of every 30 frames” 与“片段本身 3 fps”矛盾 → 已改**
+改为 “discarding two of every three stored frames (29 of 30 in the original recording)”。
+
+**D6 README 的 p=0.03 未标未校正 → 已改**
+README 改为 “(uncorrected p = 0.03)”。
+
+**D7 “3.9–5.0 min”与“0.08 h”并列口径不一 → 已删**
+§IV-D 删掉 “and 0.08 h of machine time”（0.08 h 是区间上端）。
+
+**存疑 1：LOVO 0.08 s**
+原文写的是 “approximately 0.08 seconds per frame”（估计值），我们原来写 “per keyframe”。
+§I 改为 “per frame”。
+
+**存疑 2：LOVO “10 GB for 30 million entities”**
+原文未直接给这个数（Fig. 11 只给到 30M 实体的规模轴；正文给的是压缩前后 7976 MB → 2453 MB）。
+删掉 10 GB，改成原文可查的 “compression cuts storage from about 8 GB to 2.5 GB”。
+
+**语句（6 处）**
+- §VI-B “Per correct retrieval the same ladder runs…” → “The same ladder costs 0.90 s per correct
+  retrieval at 0.25 fps, …”
+- §VI-D “34.3 pp of our queries” → “34.3% of our queries”（23.4%、10.9% 同改；pp 只用于召回差值）
+- §VI-C 插入语过长 → “At our electricity-only estimate of roughly 0.03 CNY per machine hour
+  (Section IV), storage dominates …”
+- §IV-E “Because the calculation is a projection, its dependence…” → 拆成 “This is a projection,
+  so its dependence on price matters. The crossover scales inversely…”
+- §VI-E “This confirms that the failure is semantic” → “This indicates a semantic failure”
+- Conclusion “benchmark confirms” → “shows”；§IV-E “never repays” → “at that price … does not
+  repay”；§IV-C “the gap lies” → “the residual 16–23% lies within the 27% run-to-run spread”
+
+**引用格式**
+FAISS 由 @inproceedings + booktitle 改为 @article + journal，排版不再出现 “in IEEE Transactions…”。
+
+**版面核实（不改）**
+- 摘要单栏左置 = IEEE Transactions 标准版式；
+- 参考文献实测 3.49 in（单栏宽），不是通栏；右栏空是因为 9 条文献没写满一栏。
+
+**闸门**：7 页、0 错误、0 Overfull、审计 0 DIFF / 0 SKIP。
