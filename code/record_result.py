@@ -7,8 +7,8 @@
   本脚本把 eval JSON + index 目录里的 config.json 自动拼成一行，并追加到 results.csv。
 
 用法：
-  python code/record_result.py --eval results/msrvtt_vitb32_fps2.json \
-      --index data/index_msrvtt_fps2 --build-seconds 1759.8
+  python code/record_result.py --eval results/msrvtt_vitb32_fps1.5.json \
+      --index data/index_msrvtt_fps1.5 --build-seconds 1759.8
 
   --build-seconds 省略时，会去读 index 目录 config.json 里的 build_seconds
   （新版 build_index.py 会自动写入；旧索引没有，就必须显式给）。
@@ -39,7 +39,7 @@ DATASET_NAME = {"msrvtt": "msrvtt_1k", "ucf": "ucf101_subset"}
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--eval", required=True, help="evaluate.py --save 产生的 JSON")
-    ap.add_argument("--index", required=True, help="索引目录，如 data/index_msrvtt_fps2")
+    ap.add_argument("--index", required=True, help="索引目录，如 data/index_msrvtt_fps1.5")
     ap.add_argument("--build-seconds", type=float, default=None,
                     help="建库总耗时（秒）；省略则读 index/config.json 的 build_seconds")
     ap.add_argument("--pretrained", default="laion2b_s34b_b79k",
