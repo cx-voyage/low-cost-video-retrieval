@@ -143,9 +143,9 @@ in an index; online, the query is encoded and compared with every stored vector 
 (Fig.~\ref{fig:pipeline}). Ours has no learned component beyond the frozen encoder. Offline, each
 clip is decoded at one frame per second and every sampled frame is resized to 224$\times$224 and
 passed through OpenCLIP
-ViT-B/32 \cite{cherti2023reproducible}, giving a 512-dimensional embedding --- a vector of 512
-numbers --- that is scaled to unit length and stored as one row of a float32 matrix,
-2{,}048 bytes per frame. Online, a
+ViT-B/32 \cite{cherti2023reproducible}, a model trained to place an image and its caption in one
+vector space. Each frame becomes a 512-dimensional embedding (a vector of 512 numbers), scaled to
+unit length and stored as one row of a float32 matrix, 2{,}048 bytes per frame. Online, a
 natural-language query is encoded by the text tower (the text encoder) of the same model, scored
 against every
 frame by a dot product, reduced to one score per clip by taking the maximum over its frames,
@@ -408,11 +408,15 @@ action semantics are inherently temporal, we hypothesised that reducing the samp
 1.0 to 0.25\,fps would noticeably degrade Recall. Contrary to this expectation, Recall@1 changed
 only from 32.2\% to 30.7\%, while indexing cost fell by 3.7$\times$ (1{,}035.8\,s $\rightarrow$
 277.5\,s) and the index shrank from 32.84\,MB to 8.90\,MB (Table~\ref{tab:fps},
-Fig.~\ref{fig:cost}). A paired test gives $p=0.16$ for Recall@1 between 1.0 and 0.25\,fps, and
+Fig.~\ref{fig:cost}). 
+
+A paired test gives $p=0.16$ for Recall@1 between 1.0 and 0.25\,fps, and
 across the ten pairs that the five rates define nothing survives correction at either metric
 (smallest corrected $p=0.17$); the largest uncorrected change is 2.7\,pp of Recall@10
 (0.25 against 1.5\,fps, $p=0.017$), and it does not reappear against 3.0\,fps. We therefore read the sweep
-as flat at both metrics, which makes the sampling rate the cheapest knob to turn. We sweep five
+as flat at both metrics, which makes the sampling rate the cheapest knob to turn. 
+
+We sweep five
 rates, 0.25, 0.5, 1.0, 1.5 and
 3.0\,fps, the last being the ceiling of this axis: the stored clips are themselves 3\,fps, so
 3.0\,fps indexes every frame except those of the twelve clips longer than 30\,s, cut at 90 frames
@@ -421,7 +425,9 @@ rates, 0.25, 0.5, 1.0, 1.5 and
 Recall@1 moves 32.2\%$\rightarrow$32.4\%, a difference of $+0.2$\,pp with a 95\% confidence
 interval of $[-1.1,+1.5]$\,pp, so a gain larger than about 1.5\,pp is excluded; Recall@10 moves
 66.5\%$\rightarrow$65.2\% ($p=0.11$). The frame count grows 2.9$\times$ rather than 3$\times$ because
-1\,fps keeps $\lceil N/3\rceil$ frames per clip. We therefore select 1\,fps as the operating
+1\,fps keeps $\lceil N/3\rceil$ frames per clip. 
+
+We therefore select 1\,fps as the operating
 point: below it a point of Recall@1 costs 410--890\,s of indexing time, while above it the last
 step pays 2{,}167\,s for 0.2\,pp (Section~\ref{sec:discussion}). A tighter budget
 can use 0.25\,fps, which is 3.7$\times$ cheaper and 1.5\,pp worse at Recall@1; it is also the rate
@@ -565,9 +571,13 @@ selects a set of configurations that are statistically indistinguishable. We the
 increments directly. Moving from 0.25 to 0.5\,fps costs 267\,s of indexing per 1{,}000 clips and
 returns 0.3\,pp; moving from 0.5 to 1\,fps costs 492\,s and returns 1.2\,pp; moving from 1 to
 1.5\,fps costs 724\,s and returns 0.0\,pp; and the last step, to 3.0\,fps, costs a further
-2{,}167\,s and returns 0.2\,pp. The same ladder costs 0.90\,s per correct retrieval at 0.25\,fps,
+2{,}167\,s and returns 0.2\,pp. 
+
+The same ladder costs 0.90\,s per correct retrieval at 0.25\,fps,
 3.22\,s at 1\,fps and 12.12\,s at 3\,fps: the top rate makes each correct answer 3.8 times more
-expensive for two additional correct queries out of a thousand. A point of Recall@1 thus costs
+expensive for two additional correct queries out of a thousand. 
+
+A point of Recall@1 thus costs
 between 410 and 890\,s of
 laptop time in the cheapest part of the curve, while the top of the range pays 2{,}167\,s for
 0.2\,pp, more than an order of magnitude worse. Any budget beyond roughly 1{,}040\,s per
@@ -586,14 +596,20 @@ laptop time and occupies 2{,}048\,B. Writing $P$ for the price of machine time i
 compute is $1.8\times10^{-5}P$\,CNY per frame, while the same frame costs
 $5.1\times10^{-5}$\,CNY of memory (25\,CNY/GB) or $1.0\times10^{-6}$\,CNY of solid-state storage
 (0.5\,CNY/GB). Both terms are linear in the number of frames, so no corpus size makes one overtake
-the other; the crossover is in the price. The two terms are equal at $P=2.8$\,CNY/h for a
+the other; the crossover is in the price. 
+
+The two terms are equal at $P=2.8$\,CNY/h for a
 memory-resident index and at $P=0.06$\,CNY/h for an SSD index. At our electricity-only estimate of
 roughly 0.03\,CNY per machine hour (Section~\ref{sec:cost}), storage
 dominates a memory-resident index by two orders of magnitude. Priced as rented GPU-class time, tens
 of CNY per hour, compute dominates memory by one order of magnitude (and solid-state storage by
-three). Since our deployment assumes an
+three). 
+
+Since our deployment assumes an
 already-owned laptop, neither term is negligible, and the honest reading is that the ranking is a
-statement about how machine time is priced rather than about the corpus. What does grow with $N$ is
+statement about how machine time is priced rather than about the corpus. 
+
+What does grow with $N$ is
 capacity: 15.8\,GB holds $7.7\times10^{6}$ frames, about 2{,}140 hours of video at 1\,fps, and at
 that size the index stops being resident in a commodity laptop.
 Compression then becomes mandatory, which is why LOVO invests in product quantisation at
