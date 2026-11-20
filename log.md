@@ -1150,3 +1150,24 @@ about 8 GB to 2.5 GB”。
 出现在 “IV. COST MODEL” 标题之前。最终保留原位 [t]，接受正常的跨栏断句（不是表插入断句）。
 
 **闸门**：7 页、0 错误、0 Overfull、审计 0 DIFF / 0 SKIP。
+
+
+### 2026-11-20 两处措辞（评审建议）+ 两个数字的出处定位
+
+**措辞**
+- §I: “about 0.08 s per frame … for full-resolution keyframes” → “about 0.08 s per
+  **full-resolution keyframe** on an RTX 3090”（读起来更顺，语义不变）
+- §III-C: “from $K$ **units** per frame to one” → “from $K$ **vectors** per frame to one”
+  （与 §III-B 的 “vectors” 统一）
+
+**两个数字的出处（供评审核对）**
+1. 0.08 s —— LOVO arXiv PDF 第 10 页，**D. Scalability Analysis**，Fig. 11(a) 正文：
+   “The processing time shows a linear relationship with the number of frames, with an estimated
+   processing time of approximately **0.08 seconds per frame**.”
+2. 7976 MB → 2453 MB —— 第 11 页，**E. Ablation Study**，小标题 **Impact of Key Frame Selection**：
+   “LOVO reduces the number of processing frames through **key frame selection**, which helps
+   reduce the fast query time (from 10^-1 seconds to 10^-2 seconds) and storage memory (from
+   **7976 MB** to **2453 MB**, demonstrated in our experiment).”
+   结论：省存储来自**关键帧筛选**，不是 PQ —— 我们文中 “keyframe selection alone” 的写法正确。
+
+**闸门**：7 页、0 错误、审计 0 DIFF / 0 SKIP。
