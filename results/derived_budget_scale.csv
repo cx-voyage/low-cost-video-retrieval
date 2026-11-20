@@ -1,0 +1,28 @@
+part,item,value,unit
+B,increment_0.25_to_0.5_fps,266.6,s per 1000 clips
+B,increment_0.25_to_0.5_fps_pp,+0.3,pp
+B,increment_0.5_to_1_fps,491.7,s per 1000 clips
+B,increment_0.5_to_1_fps_pp,+1.2,pp
+B,increment_1_to_1.5_fps,724.0,s per 1000 clips
+B,increment_1_to_1.5_fps_pp,+0.0,pp
+B,increment_1.5_to_3_fps,2167.3,s per 1000 clips
+B,increment_1.5_to_3_fps_pp,+0.2,pp
+B,reference_fps,1.0,fps
+B,reference_seconds,1035.8,s per 1000 clips
+C,compute_cny_per_frame,0.00090278,CNY/frame
+C,storage_cny_per_frame_ram,0.00005120,CNY/frame
+C,storage_cny_per_frame_ssd,0.00000102,CNY/frame
+C,compute_over_storage_ram,17.63,ratio
+C,compute_over_storage_ssd,882,ratio
+C,storage_price_parity,441,CNY/GB
+C,ram_wall_frames,7714844,frames
+C,ram_wall_hours_of_video,2143,hours
+C,build_hours_at_ram_wall,139,h
+C,build_cny_at_ram_wall,6965,CNY
+C,compute_cny_per_frame_basis,50,CNY/h
+C,compute_cny_per_frame_per_cny_per_hour,0.0000180556,CNY/frame per CNY/h
+C,crossover_machine_price_ram,2.84,CNY/h
+C,crossover_machine_price_ssd,0.0567,CNY/h
+C,compute_over_storage_ram_at_0.03cny_per_h,0.0106,ratio
+C,storage_over_compute_ram_at_0.03cny_per_h,94.5,ratio
+C,compute_over_storage_ram_at_1cny_per_h,0.353,ratio
