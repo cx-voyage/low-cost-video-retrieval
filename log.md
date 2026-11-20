@@ -827,3 +827,16 @@ Captioning," arXiv:2404.17498, 2024, Table 5。同一张表里有两行零样本
 （刻意省略的组件）后回到 **6 页**，0 错误 0 Overfull。
 
 **闸门**：`audit_numbers.py` 仍 0 DIFF；9 条文献全部被引用且都存在；PDF 9 个编号全部出现。
+
+
+### 2026-11-20 同步到 GitHub（用 fine-grained token，一次性）
+
+远程原来停在旧快照（43 个文件，含 `.pyc`、`.aux/.log` 等垃圾）。本次：
+
+- 上传 22 个（12 新增 + 10 更新），全部 `[OK]`
+- 删除 10 个历史文件（3 个 `__pycache__/*.pyc`、6 个 LaTeX 中间文件、1 个旧的
+  `results/msrvtt_vitb32_fps2.json`）
+- 之后用 git blob SHA 逐文件比对：本地 45 / 远程 45 / **45 个完全一致，0 个多余**
+
+注意：删除 `.bbl` 是刻意的——Overleaf 和本地都会重新生成；仓库里保留它容易和新 `refs.bib`
+不一致。
