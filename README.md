@@ -33,11 +33,14 @@ Indexing cost on a 4-core laptop CPU (Intel i5-1155G7, no discrete GPU):
 
 Two facts worth knowing when reading these numbers:
 
-* 32.2 % Recall@1 sits inside the published **zero-shot** CLIP ViT-B/32 range for MSR-VTT
-  (≈30–33 %), so the pipeline is implemented correctly. Supervised systems are far above
-  this; the trade is deliberate.
-* Changing the sampling rate from 0.25 to 2.0 fps moves Recall@1 by 1.5 pp — one standard
-  error at $n = 1{,}000$ — while changing build cost by 6.3×. **Frame rate is not the
+* 32.2 % Recall@1 is within 1.5 pp of the 30.7–31.2 % that zero-shot CLIP ViT-B/32 pipelines
+  report on the same 1k split (Ventura, Schmid & Varol, *Learning text-to-video retrieval from
+  image captioning*, arXiv:2404.17498, Table 5), and four independent checks (frame count,
+  implied hit count, index size, random baseline) agree with the raw predictions. Supervised
+  systems are far above this; the trade is deliberate.
+* Changing the sampling rate from 0.25 to 3.0 fps — the ceiling, because the stored clips are
+  themselves 3 fps — moves Recall@1 by 1.7 pp (paired $p = 0.12$) while changing build cost by
+  14×. Recall@10 does fall by 2.4 pp at 0.25 fps ($p = 0.03$). **Frame rate is not the
   bottleneck; the encoder is.**
 
 > `results/results.csv` is the single source of truth for every number above. If anything
@@ -129,10 +132,13 @@ The dataset is inferred from the output directory name: any `--out-dir` containi
 ### Reproducing the ablations
 
 ```powershell
-# sampling rate: 0.25 / 0.5 / 2 fps
+# Sampling rate. The stored MSR-VTT clips are themselves 3 fps, so the achievable
+# ladder is 3, 1.5, 1, 0.5, 0.25 fps (step = round(3 / fps)); asking for 4 fps
+# saturates at 3 fps and build_index.py now warns about it.
+python code/build_index.py --fps 3    --max-frames 90 --out-dir data\index_msrvtt_fps3
+python code/build_index.py --fps 1.5  --out-dir data\index_msrvtt_fps1.5
 python code/build_index.py --fps 0.5  --out-dir data\index_msrvtt_fps0.5
 python code/build_index.py --fps 0.25 --out-dir data\index_msrvtt_fps0.25
-python code/build_index.py --fps 2    --out-dir data\index_msrvtt_fps2
 
 # temporal aggregation: replace max with mean
 python code/evaluate.py --protocol msrvtt --index-dir data\index_msrvtt --agg mean `
@@ -147,6 +153,16 @@ python code/bench_decompose.py --dataset msrvtt --clips 20
 
 # regenerate the cost–accuracy figure
 python code/make_figure.py
+
+# query-type stratification (paper Table V) and budget/scale derivations
+python code/analyze_query_types.py
+python code/analyze_budget_scale.py
+
+# paired McNemar tests behind every p-value in the paper -> results/significance.csv
+python code/analyze_significance.py
+
+# audit: every number in the paper's tables and derived claims vs results/*.csv
+python code/audit_numbers.py
 ```
 
 ---
@@ -155,12 +171,14 @@ python code/make_figure.py
 
 | Paper element | Source |
 |---|---|
-| Table: sampling-rate ablation | `results/results.csv`, rows `fps 0.25/0.5/1/2` |
+| Table: sampling-rate ablation | `results/results.csv`, rows `fps 0.25/0.5/1/1.5/3` |
 | Table: main results (Recall@K) | `results/msrvtt_vitb32_1fps.json` |
 | Table: system configuration | `code/build_index.py` defaults, `env.ps1` |
 | Decoding vs encoder split (5.6 / 40.4 ms) | `results/timing_components.csv` |
 | Run-to-run spread (197.6 / 207.1 / 251.1 s) | `results/timing_repeats.csv` |
 | Cost–accuracy figure | `results/fig_cost_accuracy.png` via `code/make_figure.py` |
+| Table: query-type stratification | `results/query_types.csv` via `code/analyze_query_types.py` |
+| Budget / scale derivations (crossover prices, 7.7e6-frame memory wall, 17.6× at P=50) | `results/derived_budget_scale.csv` via `code/analyze_budget_scale.py` |
 
 ---
 
@@ -196,7 +214,7 @@ The first two rows are measured, not asserted: see the sampling-rate ablation an
 
 ## Report
 
-* `report/main.pdf` — 5 pages, IEEE Transactions style
+* `report/main.pdf` — 6 pages, IEEE Transactions style
 * `report/main.tex` — LaTeX source (pipeline figure drawn with TikZ)
 * `report/refs.bib` — bibliography
 
