@@ -1113,3 +1113,40 @@ FAISS 由 @inproceedings + booktitle 改为 @article + journal，排版不再出
 - 参考文献实测 3.49 in（单栏宽），不是通栏；右栏空是因为 9 条文献没写满一栏。
 
 **闸门**：7 页、0 错误、0 Overfull、审计 0 DIFF / 0 SKIP。
+
+
+### 2026-11-20 第二轮评审（4 条 + 学习过程）
+
+**1. LOVO 0.08 s 的单位与可比性**
+原文（arXiv PDF 第 10 页，Scalability 一节，Fig. 11(a)）：“The processing time shows a linear
+relationship with the number of frames, with an estimated processing time of approximately
+**0.08 seconds per frame**.” 确认是 per frame，不是 per keyframe。
+同时原文没有写“1080p”，所以不能加这个限定。改为 “about 0.08 s per frame on an RTX 3090 for
+full-resolution keyframes”，并把后一句扩成 “different hardware **and input resolutions**”。
+读者不会再问“3090 怎么比 4 核 CPU 慢”：我们的输入是 224×224、单次前向；它是全分辨率关键帧 +
+对象级 patch 处理。
+
+**2. §III-B “for the same video” 不严谨**
+改为 “LOVO keeps K≈2,040 object vectors per **encoded frame**, against our one, so its index is
+three orders of magnitude larger **for the same number of frames**”。
+
+**3. §IV-C “motivates the frame-level design” 指代不清**
+改为 “…which is what motivates sampling at 1 fps rather than 30 fps”。
+
+**4. §II 的 8 GB → 2.5 GB 出处（重要：原句归因也错了）**
+原文第 11 页：“…key frame selection, which helps reduce the fast query time (from 10^-1 seconds
+to 10^-2 seconds) and storage memory (from **7976 MB** to **2453 MB**, demonstrated in our
+experiment).”
+注意：这是**关键帧筛选**带来的，不是 PQ 压缩。原句写 “compression cuts storage” 属于错误归因，
+已改为 “separately, the authors report that **keyframe selection alone** reduces storage from
+about 8 GB to 2.5 GB”。
+
+**5. “学习过程”**
+§V-G 开头加一句：“The protocol in this section is the end point of a longer process.” 后面五条
+本身就是过程叙事（环境→基准→数据→计时→推断），避免与第 2 条（UCF→MSR-VTT）重复。
+
+**版面实验（记录，避免以后重复尝试）**
+表 I（perhour）试过 [b] 和移到 §IV-C 之前，都不好：[b] 会让表跑到 §V 标题之后，移动会让表
+出现在 “IV. COST MODEL” 标题之前。最终保留原位 [t]，接受正常的跨栏断句（不是表插入断句）。
+
+**闸门**：7 页、0 错误、0 Overfull、审计 0 DIFF / 0 SKIP。
