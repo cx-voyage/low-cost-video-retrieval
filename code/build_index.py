@@ -165,6 +165,18 @@ def main():
     print(f"[模型] 就绪，耗时 {time.perf_counter() - t0:.1f} 秒")
 
     # 3) 逐段视频：抽帧 → 编码
+    # 先探测源视频帧率：目标帧率高于源时，step 最小只能取 1，实际帧率被源限制。
+    # 不探测就会把"目标帧率"当成"实际帧率"记进结果（本仓库曾因此在 2.0/4.0 fps 上出错）。
+    src_fps_probe = 0.0
+    if vids:
+        _cap = cv2.VideoCapture(vids[0])
+        src_fps_probe = float(_cap.get(cv2.CAP_PROP_FPS) or 0.0)
+        _cap.release()
+    fps_effective = min(args.fps, src_fps_probe) if src_fps_probe > 0 else args.fps
+    if src_fps_probe > 0 and args.fps > src_fps_probe + 1e-6:
+        print(f"[注意] 源视频只有 {src_fps_probe:.2f} fps，--fps {args.fps:g} 实际按 "
+              f"{fps_effective:.2f} fps 抽帧（step=1）。记录结果时请用实际帧率！")
+
     all_emb, meta = [], []
     t_start = time.perf_counter()
     n_frames_total = 0
@@ -202,6 +214,8 @@ def main():
     with open(os.path.join(out_dir, "config.json"), "w", encoding="utf-8") as f:
         json.dump({"fps": args.fps, "model": args.model,
                    "pretrained": pretrained,
+                   "fps_effective": round(fps_effective, 3),
+                   "source_fps": round(src_fps_probe, 3),
                    "max_frames": args.max_frames,
                    "n_clips": len(vids), "n_frames": len(meta)}, f,
                   ensure_ascii=False, indent=2)
