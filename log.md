@@ -1171,3 +1171,45 @@ about 8 GB to 2.5 GB”。
    结论：省存储来自**关键帧筛选**，不是 PQ —— 我们文中 “keyframe selection alone” 的写法正确。
 
 **闸门**：7 页、0 错误、审计 0 DIFF / 0 SKIP。
+
+
+### 2026-11-20 收尾两处：8→7.8 GB、学习过程写实
+
+**1. LOVO 存储数字精确化**
+原文 7976 MB → 2453 MB；按 1024 换算即 7.79 GB → 2.40 GB。正文改为 “from about 7.8 GB to
+2.4 GB”（保留 about，因为原值本身是实验测得的近似）。
+
+**2. “学习过程”从一句扩成过程弧线**
+原文只有 “The protocol in this section is the end point of a longer process.”，偏弱。
+改为：
+
+> “The protocol in this section is the end point of a longer process: we built an end-to-end
+> pipeline before choosing a benchmark, changed the benchmark once its metric saturated, and found
+> a labelling error only after the first timing run. Five problems shaped the result, and each is
+> documented in the repository log.”
+
+这样“先做管线 → 再选基准 → 后修标注”的顺序是显式的，而细节仍由下面五条承担，不重复。
+配合 §II（读三篇文献）、§III-B（三个决定）、§VII（未解决问题及原因），考核要求的
+“学习过程 / 思考设计 / 解决方案 / 实验验证”四块都有对应段落。
+
+**闸门**：7 页、0 错误、0 Overfull、审计 0 DIFF / 0 SKIP。
+
+
+### 2026-11-20 §V-G 开头句：修正一处事实错误（评审指出）
+
+上一版写 “found a labelling error **only after the first timing run**”——**不成立**。
+3 fps 的真相是 2026-11-19 跑完 4 fps 建库、核对 meta 时间戳时发现的；第一次计时跑是 11-17
+的 UCF-101（197.6 / 207.1 / 251.1 s），早了整整两天。
+
+改为（采纳评审版本，略作压缩）：
+
+> “The protocol in this section is the end point of a longer process: we built an end-to-end
+> pipeline on a small class-labelled subset, moved to MSR-VTT once that subset's metric saturated,
+> and discovered from the stored timestamps that the source clips are themselves 3 fps, which had
+> silently reduced two of the requested rates.”
+
+同时 §III-C 的 “What the three systems share is one principle” 改为
+“The lesson we took from all three systems is a single principle”，把“学习所得”点明，
+与 §II（读文献）→ §III（据此设计）接上。
+
+**闸门**：7 页、0 错误、审计 0 DIFF / 0 SKIP。
