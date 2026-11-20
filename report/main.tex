@@ -31,12 +31,12 @@ single laptop CPU, how much accuracy is left, and where does the remaining cost 
 build a text-to-video retriever from a frozen OpenCLIP ViT-B/32 encoder, one frame per
 second, one 512-dimensional vector per frame, and exhaustive cosine search, and we
 characterise its cost--accuracy curve on MSR-VTT test 1k. Recall@1 is 32.2\%, within 1.5 percentage
-points (pp) of the 30.7--31.2\% reported for zero-shot CLIP ViT-B/32 on this split
+points (pp) of the 30.7\% reported for a frozen zero-shot CLIP ViT-B/32 baseline on this split
 \cite{ventura2024learning}, so
 the pipeline is implemented correctly;
 indexing the 1,000 clips takes 1{,}035.8\,s on four CPU threads. Varying the sampling rate
 from 0.25 to 3.0\,fps --- the ceiling imposed by clips that are themselves stored at 3\,fps ---
-changes indexing cost by 14$\times$ but Recall@1 by only 1.7 percentage points (pp). A paired test
+changes indexing cost by 14$\times$ but Recall@1 by only 1.7\,pp. A paired test
 cannot separate that difference from zero ($p=0.12$), so the knee of the curve sits at 1\,fps and
 the sampling rate is the cheapest available knob. Per hour of video, the operating point costs
 3.9--5.0 minutes of CPU time, 7.4\,MB of index and 0.0036\,kWh of electricity. A
@@ -62,7 +62,7 @@ crosses a junction, or the moment a chart appears on screen. Systems that answer
 queries well already exist. They also assume a well-provisioned pipeline: Craw indexes
 large video collections on a machine with 128 CPU cores, 512\,GB of RAM and an RTX~4090
 \cite{craw2026}, and LOVO encodes object-level representations at about 0.08\,s per
-keyframe on an RTX~3090 \cite{lovo2025}. Because these figures are obtained on different
+frame on an RTX~3090 \cite{lovo2025}. Because these figures are obtained on different
 hardware from ours, we do not compare accuracies with such systems; instead we characterise
 a different operating point, and Section~\ref{sec:related} explains why the two ends of the
 design space are complementary rather than competing.
@@ -88,9 +88,9 @@ on MSR-VTT (32.2\%) is 32 points above the 0.1\% chance level. Four independent 
 count per clip, implied count of correct retrievals, index size and random baseline --- agree with
 each other and with the raw predictions (Section~\ref{sec:exp}), which we take as the evidence
 that the pipeline is correct: a preprocessing or alignment error would drive the figure towards
-chance. These figures agree with the 30.7--31.2\% reported for zero-shot CLIP ViT-B/32 baselines on
-the same split \cite{ventura2024learning}, within one standard error, although the protocols differ
-in frame count and pooling. The
+chance. These figures agree with the 30.7\% reported for a frozen zero-shot CLIP ViT-B/32 baseline
+on the same split \cite{ventura2024learning}, within one standard error, although the protocols
+differ in frame count and pooling. The
 result is below supervised state-of-the-art; the trade is deliberate.
 
 % ------------------------------------------------------------
@@ -111,9 +111,10 @@ LOVO targets object-level queries, such as a red car running beside another car 
 It partitions each keyframe into $K$ patches ($\approx$2{,}040 for 1080p with $32\times32$
 patches), encodes each patch into its own vector with a bounding box and an open-vocabulary class,
 and compresses the result with product quantisation (lossy vector compression) in an inverted file
-(a coarse, bucket-based index). This yields localisation but multiplies the vector count per frame
-by $K$; the index reaches the order of 10\,GB for 30 million entities. The offline cost is
-justified as invisible to users at query time, which from a total-cost view it is not.
+(a coarse, bucket-based index); the authors report that compression cuts storage from about
+8\,GB to 2.5\,GB. This yields localisation but multiplies the vector count per frame by $K$. The
+offline cost is justified as invisible to users at query time, which from a total-cost view it is
+not.
 
 \noindent\textbf{Bobsled: event patterns in streams.}
 Bobsled matches temporal patterns over video streams, such as a rolling stop followed by a right
@@ -139,7 +140,8 @@ A text-to-video retrieval system has an offline half and an online half. Offline
 decoded and sampled into frames, each frame is encoded into a vector, and the vectors are stored
 in an index; online, the query is encoded and compared with every stored vector to rank the clips
 (Fig.~\ref{fig:pipeline}). Ours has no learned component beyond the frozen encoder. Offline, each
-clip is decoded at one frame per second and every sampled frame is passed through OpenCLIP
+clip is decoded at one frame per second and every sampled frame is resized to 224$\times$224 and
+passed through OpenCLIP
 ViT-B/32 \cite{cherti2023reproducible}, giving a 512-dimensional embedding --- a vector of 512
 numbers --- that is scaled to unit length and stored as one row of a float32 matrix,
 2{,}048 bytes per frame. Online, a
@@ -197,23 +199,24 @@ produced it.
 vectors as one $N\times512$ matrix, (4) encode the query with the text tower, (5) compare it with
 every row and reduce to one score per clip. Only the two shaded boxes run a neural network, and
 both are used frozen: no training and no fine-tuning. Labels give measured per-unit costs
-(Section~\ref{sec:cost}).}
+(Section~\ref{sec:cost}); the per-frame label on the encoder is the encoder alone, which is why it
+is below the 65\,ms end-to-end figure.}
 \label{fig:pipeline}
 \end{figure}
 
 \subsection{Three Decisions and Their Costs}
 Three decisions account for most of the cost and most of the accuracy. First, the encoder is
 used zero-shot, which removes training entirely but leaves us below models tuned on the target
-dataset; our Recall@1 of 32.2\% is within 1.5\,pp of the 30.7--31.2\% that zero-shot CLIP ViT-B/32
-pipelines report on the same split \cite{ventura2024learning}, which suggests that the remaining
-error comes from the encoder rather than from the pipeline.
-Second, we sample at 1\,fps, discarding 29 of every 30 frames; brief events can therefore be
-missed, although the sampling-rate sweep in Section~\ref{sec:fps} shows no significant loss at
-Recall@1 down
-to 0.25\,fps, where Recall@10 falls by 2.4\,pp before correction for multiplicity. Third, one vector is stored per frame rather than per object, which removes
-localisation but cuts the number of encoder calls per frame from $K$ to one; LOVO, which keeps
-object-level vectors, pays on the order of $10^{3}$ times more per frame for that ability
-\cite{lovo2025}.
+dataset; our Recall@1 of 32.2\% is within 1.5\,pp of the 30.7\% reported for a frozen zero-shot
+CLIP ViT-B/32 baseline on the same split \cite{ventura2024learning}, which suggests that the
+remaining error comes from the encoder rather than from the pipeline.
+Second, we sample at 1\,fps, discarding two of every three stored frames (29 of 30 in the original
+recording); brief events can therefore be missed, although the sampling-rate sweep in
+Section~\ref{sec:fps} shows no statistically significant loss at Recall@1 down to 0.25\,fps, where
+Recall@10 falls by 2.4\,pp before correction for multiplicity. Third, one vector is stored per frame
+rather than per object. This removes localisation but keeps the index small: LOVO keeps $K\approx
+2{,}040$ object vectors per keyframe \cite{lovo2025}, so for the same video its index is three
+orders of magnitude larger, even though a single forward pass produces those vectors.
 
 \subsection{What We Deliberately Left Out}
 We also chose not to build several components that the comparison systems require. Craw runs a
@@ -271,14 +274,14 @@ decode, colour conversion) costs 5.6\,ms per frame on MSR-VTT and 6.7\,ms on UCF
 preprocessing plus the ViT-B/32 forward pass costs 40.4\,ms and 43.5\,ms respectively. The
 encoder call is therefore roughly seven times more expensive than decoding. Summing the two stages
 accounts for 77--84\% of an end-to-end run; the remainder is per-clip overhead that we did not
-attribute, and the gap lies within the 27\% spread. The micro-benchmark runs are 15--22\% faster
+attribute, and the residual 16--23\% lies within the 27\% run-to-run spread. The micro-benchmark runs are 15--22\% faster
 than the full indexing runs above, which is also within that spread. Because the encoder term
 dominates, the number of encoded frames rather than the speed of video I/O is the quantity to
 reduce, which is what motivates the frame-level design.
 
 \subsection{Normalised Cost per Hour of Video}
 Normalised to one hour of video at 1\,fps, indexing costs 3{,}600 frames, 3.9--5.0 minutes of
-CPU time, a 7.4\,MB index and 0.08\,h of machine time. At an assumed 45\,W system draw (a rough
+CPU time and a 7.4\,MB index. At an assumed 45\,W system draw (a rough
 estimate for the whole laptop, not measured with a power meter) that is 0.0036\,kWh, or about
 0.03 US cents (0.2 CNY cents) at 0.55\,CNY/kWh. This figure covers electricity only; the
 7.4\,MB index is priced separately and is not included. Processing at 30\,fps would require
@@ -311,10 +314,10 @@ The model also delimits its own validity. Valuing machine time at 50\,CNY/h --- 
 50$\times$ GPU speed-up, a 13{,}000\,CNY GPU repays itself at $N^{*}$ frames, where the
 per-frame saving is the measured 65--84\,ms. This places the crossover between
 $1.14\times10^{7}$ and $1.48\times10^{7}$ frames, that is 3{,}200--4{,}100 hours of video at
-1\,fps. Because the calculation is a projection, its dependence on the price should be stated: the
-crossover scales inversely with the value of machine time, so at 1\,CNY/h it moves to
-$5.7$--$7.3\times10^{8}$ frames (roughly $1.6$--$2.0\times10^{5}$ hours of video) and the purchase never
-repays itself within a plausible corpus. The GPU is therefore justified only where machine hours
+1\,fps. This is a projection, so its dependence on price matters. The crossover scales inversely with
+the value of machine time: at 1\,CNY/h it moves to $5.7$--$7.3\times10^{8}$ frames (roughly
+$1.6$--$2.0\times10^{5}$ hours of video), and at that price the purchase does not repay itself
+within a plausible corpus. The GPU is therefore justified only where machine hours
 are genuinely expensive, which is the reading we intend. A second and independent limit comes from search latency: exhaustive cosine search costs
 0.5--2.4\,$\mu$s per frame in our measurements (1.2--5.8\,ms over 2{,}462 frames), so
 extrapolated to $10^{7}$ frames it would need 5--25\,s per query. The two limits are of the same
@@ -465,7 +468,7 @@ LOVO abandons frame-level representations in favour of patch-level ones \cite{lo
 
 \subsection{Sanity Check on UCF-101}\label{sec:ucf}
 On the UCF-101 subset, Recall@1, @5 and @10 are identical (90\%), indicating that the single
-failing query cannot be recovered by increasing $K$. This confirms that the failure is semantic
+failing query cannot be recovered by increasing $K$. This indicates a semantic failure
 rather than a matter of ranking depth. Because only 10 classes are present, roughly 10\% of the
 corpus is relevant to any query and random Recall@10 already reaches 65.5\%; the metric therefore
 carries little discriminative power. We use this dataset exclusively as a pipeline sanity check
@@ -550,7 +553,7 @@ selects a set of configurations that are statistically indistinguishable. We the
 increments directly. Moving from 0.25 to 0.5\,fps costs 267\,s of indexing per 1{,}000 clips and
 returns 0.3\,pp; moving from 0.5 to 1\,fps costs 492\,s and returns 1.2\,pp; moving from 1 to
 1.5\,fps costs 724\,s and returns 0.0\,pp; and the last step, to 3.0\,fps, costs a further
-2{,}167\,s and returns 0.2\,pp. Per correct retrieval the same ladder runs 0.90\,s at 0.25\,fps,
+2{,}167\,s and returns 0.2\,pp. The same ladder costs 0.90\,s per correct retrieval at 0.25\,fps,
 3.22\,s at 1\,fps and 12.12\,s at 3\,fps: the top rate makes each correct answer 3.8 times more
 expensive for two additional correct queries out of a thousand. A point of Recall@1 thus costs
 between 410 and 890\,s of
@@ -572,8 +575,8 @@ compute is $1.8\times10^{-5}P$\,CNY per frame, while the same frame costs
 $5.1\times10^{-5}$\,CNY of memory (25\,CNY/GB) or $1.0\times10^{-6}$\,CNY of solid-state storage
 (0.5\,CNY/GB). Both terms are linear in the number of frames, so no corpus size makes one overtake
 the other; the crossover is in the price. The two terms are equal at $P=2.8$\,CNY/h for a
-memory-resident index and at $P=0.06$\,CNY/h for an SSD index. Priced as electricity only --- which
-our own energy estimate in Section~\ref{sec:cost} puts at roughly 0.03\,CNY per machine hour --- storage
+memory-resident index and at $P=0.06$\,CNY/h for an SSD index. At our electricity-only estimate of
+roughly 0.03\,CNY per machine hour (Section~\ref{sec:cost}), storage
 dominates a memory-resident index by two orders of magnitude. Priced as rented GPU-class time, tens
 of CNY per hour, compute dominates memory by one order of magnitude (and solid-state storage by
 three). Since our deployment assumes an
@@ -591,8 +594,8 @@ Exhaustive search scales linearly: 1.2--5.8\,ms for $2.5\times10^{3}$ frames ext
 examine only part of the corpus --- become mandatory. This
 delineates the regime in which our design is viable and explains why LOVO, which targets tens of
 millions of entities, devotes most of its engineering effort to index compression. In the other
-direction, 34.3\,pp of our queries place the correct clip between ranks 2 and 10 --- 23.4\,pp of
-them in ranks 2--5 and 10.9\,pp in 6--10. A perfect re-ranker over the top five could therefore
+direction, 34.3\% of our queries place the correct clip between ranks 2 and 10 --- 23.4\% of
+them in ranks 2--5 and 10.9\% in 6--10. A perfect re-ranker over the top five could therefore
 recover at most 23.4\,pp, and one over the top ten 34.3\,pp, lifting Recall@1 to 55.6\% and
 66.5\% respectively. This quantifies the headroom of the
 coarse-to-fine architecture adopted by LOVO and motivates a cheap verification stage as future
@@ -632,7 +635,7 @@ negative: using every frame the stored clips contain instead of one per second, 
 increase in sampled frames, costs nearly four times more and buys nothing measurable. This
 suggests that accuracy in this class of system is limited by the encoder rather than by the frame
 rate. A
-component-level benchmark confirms that the encoder, not video I/O, is the dominant term, which
+component-level benchmark shows that the encoder, not video I/O, is the dominant term, which
 is why the sampling rate is the right knob to turn. Two extensions follow directly: a second-stage
 re-ranker, with an upper bound of 34.3 points on our data, and compression for corpora beyond
 $10^{7}$ frames, where CPU-only search ceases to be appropriate.
