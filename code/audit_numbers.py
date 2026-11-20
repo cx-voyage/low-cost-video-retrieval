@@ -1,0 +1,211 @@
+"""数字终审：把 main.tex 里各表格的每个数字，与 results/*.csv 逐格对照。
+
+为什么要有这个脚本
+------------------
+报告里最容易出错的地方不是正文文字，而是**表格里的数字**：改了一次实验、忘了同步表，
+或者手抄时少一位。人眼核对 20 多个数字很容易漏，脚本不会漏。
+
+用法：
+    python code/audit_numbers.py
+
+输出：每张表逐格 PASS / DIFF；只要有一处 DIFF 就以非零码退出，方便当作发布前闸门。
+"""
+
+import csv
+import os
+import re
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TEX = os.path.join(ROOT, "report", "main.tex")
+CSV_MAIN = os.path.join(ROOT, "results", "results.csv")
+CSV_QTYPE = os.path.join(ROOT, "results", "query_types.csv")
+
+TOL = 0.06          # 显示精度 0.1 时的容差
+
+
+def load_csv(path):
+    with open(path, encoding="utf-8", newline="") as f:
+        return list(csv.DictReader(f))
+
+
+def tex_table(tex, label):
+    """取出 \\label{label} 所在 table 环境的正文行（含 & 的行）。"""
+    i = tex.find(r"\label{%s}" % label)
+    if i < 0:
+        return []
+    start = tex.rfind(r"\begin{table}", 0, i)
+    end = tex.find(r"\end{table}", i)
+    body = tex[start:end]
+    rows = []
+    for line in body.splitlines():
+        if "&" in line:
+            rows.append(line.rstrip("\\ ").split("&"))
+    return rows
+
+
+def num(cell):
+    """把 LaTeX 单元格转成浮点；不是纯数字则返回 None。"""
+    s = cell.strip().replace(r"\,", "")
+    s = s.replace("\\", "").replace("{,}", "").replace("$", "").replace("%", "")
+    s = s.replace("--", "-").strip()
+    if s.endswith("pp"):
+        s = s[:-2].strip()
+    if not re.fullmatch(r"-?\d+(\.\d+)?", s):
+        return None
+    return float(s)
+
+
+def check(name, got, want, tol=TOL):
+    global FAILED
+    if got is None or want is None:
+        return
+    ok = abs(got - want) <= tol
+    if not ok:
+        FAILED += 1
+    print(f"  {'PASS' if ok else 'DIFF'}  {name:<38} tex={got:<10g} csv={want:<10g}")
+
+
+FAILED = 0
+
+
+def main():
+    tex = open(TEX, encoding="utf-8").read()
+    main_rows = load_csv(CSV_MAIN)
+    ms = {(float(r["fps"]), r["agg"]): r for r in main_rows
+          if r["dataset"] == "msrvtt_1k" and r["build_seconds"]}
+    qtype = {(float(r["fps"]), r["category"]): r for r in load_csv(CSV_QTYPE)}
+
+    # ---------------- Table III: sampling-rate ablation ----------------
+    print("\n[Table tab:fps] 抽帧率消融")
+    for cells in tex_table(tex, "tab:fps"):
+        fps = num(cells[0])
+        if fps is None or (fps, "max") not in ms:
+            continue
+        r = ms[(fps, "max")]
+        vals = [num(c) for c in cells[1:]]
+        nums = [v for v in vals if v is not None]
+        want = [float(r["n_frames"]), float(r["build_seconds"]), float(r["index_mb"]),
+                float(r["recall@1"]) * 100, float(r["recall@5"]) * 100,
+                float(r["recall@10"]) * 100]
+        labels = ["frames", "build_s", "index_mb", "R@1", "R@5", "R@10"]
+        for lab, g, w in zip(labels, nums, want):
+            check(f"{fps:g} fps {lab}", g, w)
+
+    # ---------------- Table II: main results ----------------
+    print("\n[Table tab:main] 主结果（1 fps）")
+    r = ms[(1.0, "max")]
+    for cells in tex_table(tex, "tab:main"):
+        metric = cells[0].strip().lower()
+        k = {"recall@1": "1", "recall@5": "5", "recall@10": "10"}.get(metric)
+        if not k:
+            continue
+        vals = [num(c) for c in cells[1:]]
+        nums = [v for v in vals if v is not None]
+        if len(nums) >= 3:
+            check(f"Recall@{k} this work", nums[0], float(r[f"recall@{k}"]) * 100)
+            check(f"Recall@{k} random", nums[1], float(r[f"rand@{k}"]) * 100)
+            gap = (float(r[f"recall@{k}"]) - float(r[f"rand@{k}"])) * 100
+            check(f"Recall@{k} gap", nums[2], gap)
+
+    # ---------------- Table V: query types ----------------
+    print("\n[Table tab:qtype] 查询类型分层")
+    for cells in tex_table(tex, "tab:qtype"):
+        cat = cells[0].strip()
+        if cat not in ("action", "scene", "object", "all"):
+            continue
+        vals = [num(c) for c in cells[1:]]
+        nums = [v for v in vals if v is not None]
+        if cat == "all":
+            n = 1000
+            for fps_i, fps in enumerate((0.25, 0.5, 1.0, 1.5)):
+                if fps not in [k[0] for k in ms]:
+                    continue
+                rr = ms.get((fps, "max"))
+                if not rr:
+                    continue
+                check(f"all {fps:g} fps R@1", nums[1 + fps_i],
+                      float(rr["recall@1"]) * 100)
+            check("all 1 fps R@10", nums[-1], float(ms[(1.0, "max")]["recall@10"]) * 100)
+        else:
+            n = nums[0]
+            for fps_i, fps in enumerate((0.25, 0.5, 1.0, 1.5)):
+                q = qtype.get((fps, cat))
+                if not q:
+                    continue
+                if fps_i == 0:
+                    check(f"{cat} n", n, float(q["n_queries"]))
+                check(f"{cat} {fps:g} fps R@1", nums[1 + fps_i],
+                      float(q["recall@1"]) * 100)
+            check(f"{cat} 1 fps R@10", nums[-1], float(qtype[(1.0, cat)]["recall@10"]) * 100)
+
+    # ---------------- 正文里的派生数字（最容易变质） ----------------
+    print("\n[正文派生数字] Abstract / §V-C 的倍数与差值")
+    flat = re.sub(r"\s+", " ", tex)
+    rows = sorted(ms.values(), key=lambda x: float(x["build_seconds"]))
+    idx = {float(x["fps"]): x for x in ms.values()}
+    lo, hi = rows[0], rows[-1]
+    cost_span = float(hi["build_seconds"]) / float(lo["build_seconds"])
+    rate_span = float(hi["fps"]) / float(lo["fps"])
+    r1 = {f: float(x["recall@1"]) * 100 for f, x in idx.items()}
+    r1_span = max(r1.values()) - min(r1.values())
+
+    def claim(label, pattern, want, tol=0.06):
+        m = re.search(pattern, flat)
+        if not m:
+            print(f"  SKIP  {label:<38} 正文没匹配到该句式")
+            return
+        raw = m.group(1).replace("{,}", "").replace(",", "")
+        check(label, float(raw), want, tol=tol)
+
+    claim("abstract rate span", r"across a(?:n)? ([0-9.]+)\$\\times\$ range of sampling rates", rate_span)
+    claim("abstract cost span", r"changes indexing cost by ([0-9.]+)\$\\times\$", cost_span, tol=0.5)
+    claim("contrib cost span", r"indexing cost changes by ([0-9.]+)\$\\times\$", cost_span, tol=0.5)
+    claim("abstract R@1 span", r"Recall@1 moves by ([0-9.]+)\\,pp", r1_span)
+    claim("1 fps vs 0.25 fps cost", r"indexing cost fell by ([0-9.]+)\$\\times\$",
+          float(idx[1.0]["build_seconds"]) / float(idx[0.25]["build_seconds"]))
+    claim("1.5 fps vs 1 fps cost", r"cost grows ([0-9.]+)\$\\times\$ \(1\{,\}759",
+          float(idx[1.5]["build_seconds"]) / float(idx[1.0]["build_seconds"]))
+    claim("1.5 fps index growth", r"and the index ([0-9.]+)\\%",
+          (float(idx[1.5]["index_mb"]) / float(idx[1.0]["index_mb"]) - 1) * 100, tol=0.55)
+    claim("3 fps vs 1 fps cost", r"grows ([0-9.]+)\$\\times\$ \(3\{,\}927",
+          float(idx[3.0]["build_seconds"]) / float(idx[1.0]["build_seconds"]))
+    claim("3 fps frame ratio", r"frame count grows (?:by )?([0-9.]+)\$\\times\$ rather than",
+          float(idx[3.0]["n_frames"]) / float(idx[1.0]["n_frames"]))
+    claim("1.5->3 fps extra seconds", r"costs a further ([0-9\{\},]+)\\,s and returns ([0-9.]+)",
+          float(idx[3.0]["build_seconds"]) - float(idx[1.5]["build_seconds"]), tol=0.55)
+
+    # ---------------- 正文里的 p 值（significance.csv） ----------------
+    print("\n[配对检验 p 值] 正文 vs results/significance.csv")
+    sig_path = os.path.join(ROOT, "results", "significance.csv")
+    if not os.path.isfile(sig_path):
+        print("  SKIP  找不到 significance.csv（先跑 code/analyze_significance.py）")
+    else:
+        sig = {}
+        with open(sig_path, encoding="utf-8", newline="") as f:
+            for r in csv.DictReader(f):
+                a, b = sorted((float(r["rate_a"]), float(r["rate_b"])))
+                sig[(r["k"], a, b)] = (float(r["p"]), float(r["p_holm"]))
+        min_holm = min(v[1] for v in sig.values())
+        min_raw = min(v[0] for v in sig.values())
+        claim("p: 1.0 vs 0.25 R@1", r"paired test gives \$p=([0-9.]+)\$ for Recall@1",
+              sig[("R@1", 0.25, 1.0)][0], tol=0.006)
+        claim("p: endpoints 0.25 vs 3.0 R@1", r"cannot separate\s+from\s+zero \(\$p=([0-9.]+)\$\)",
+              sig[("R@1", 0.25, 3.0)][0], tol=0.006)
+        claim("smallest Holm-corrected p", r"smallest corrected \$p=([0-9.]+)\$", min_holm, tol=0.006)
+        claim("p: 1.0 vs 3.0 R@1", r"significant \(\$p=([0-9.]+)\$, \$p=[0-9.]+\$\)",
+              sig[("R@1", 1.0, 3.0)][0], tol=0.006)
+        claim("p: 1.0 vs 3.0 R@10", r"significant \(\$p=[0-9.]+\$, \$p=([0-9.]+)\$\)",
+              sig[("R@10", 1.0, 3.0)][0], tol=0.006)
+        print(f"  INFO  最小未校正 p={min_raw:.3f}，最小 Holm p={min_holm:.3f}"
+              f"（{len(sig)} 对检验）")
+
+    print("\n" + ("=" * 60))
+    if FAILED:
+        print(f"共有 {FAILED} 处不一致 —— 发布前必须修好")
+        sys.exit(1)
+    print("全部一致（0 处 DIFF）")
+
+
+if __name__ == "__main__":
+    main()
