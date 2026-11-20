@@ -98,7 +98,7 @@ result is below supervised state-of-the-art; the trade is deliberate.
 Craw unifies existence, dynamic and similarity queries over large-scale video datasets by
 representing video as Video Semantic Units (trajectories, inter-object interactions and
 temporal relations) and indexing them with a three-layer hybrid index that combines a
-keyword inverted index with a tiered cluster index. It reports up to two orders of magnitude
+keyword inverted index with a tiered cluster index \cite{craw2026}. It reports up to two orders of magnitude
 lower query latency than prior systems. However, it explicitly avoids frame skipping in order
 to preserve tracking accuracy, which makes index construction heavy, and its reliance on a
 closed-set detector limits queries to predefined object categories. Notably, Craw's two key
@@ -109,7 +109,7 @@ trade-off curve.
 
 \noindent\textbf{LOVO: object-level queries.}
 LOVO targets complex object queries, that is, retrieving segments that contain a specific
-object configuration such as a red car running side by side with another car. To support
+object configuration such as a red car running side by side with another car \cite{lovo2025}. To support
 object-level localisation it partitions every keyframe into $K$ patches (roughly 2{,}040
 patches for a 1080p frame with $32\times32$ patches), encodes each patch independently into a
 768-dimensional vector, and predicts a bounding box and an open-vocabulary class embedding per
