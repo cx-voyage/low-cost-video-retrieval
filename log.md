@@ -1213,3 +1213,42 @@ about 8 GB to 2.5 GB”。
 与 §II（读文献）→ §III（据此设计）接上。
 
 **闸门**：7 页、0 错误、审计 0 DIFF / 0 SKIP。
+
+
+### 2026-11-20 第三轮：M1–M3 + S1–S6
+
+**M1 source/stored 矛盾**
+§V-G “the **source** clips are themselves 3 fps” 与 §IV-C “the **stored** clips are 3 fps, not the
+frame rate of the original recordings” 冲突。改为 “the **stored** clips”。
+
+**M2 “all uncorrected p>0.19” 对 R@10 不成立（已复算，评审正确）**
+用 query_ranks.json 复算 action 类 R@10：0.5 fps = 69.3%，1.5 fps = 72.3%，差 +2.9 pp，
+b01=17、b10=6、McNemar p=0.037。原文没限定指标，属于过度概括。
+处理：
+- §VI-A 改为 “No class shows an effect at the 5% level **on Recall@1** (all uncorrected p≥0.19)”
+- 加一句披露：“At Recall@10 one comparison does: the action class between 0.5 and 1.5 fps,
+  2.9 pp, uncorrected p=0.037; it does not survive correction across the 36 class-pair-metric
+  comparisons.”（36 = 3 类 × 6 对 × 2 指标；Holm 最小调整 p = 36×0.037 > 1）
+- 表 V 图注限定到 Recall@1，并把 p>0.19 改为 p≥0.19（object 的最小值 0.194 离 0.19 太近）
+- 受牵连的两句也限定：“the loss is not concentrated… **at Recall@1**”、
+  “removes cost without redistributing **Recall@1**”
+
+**M3 “3×10^7 entities” 无出处**
+原文 Fig. 11(b) 的横轴只到 30M（“Insert Entities”），正文没有这个数。改为
+“**tens of millions of entities**”，与 §VI-D 的表述一致。
+
+**S1** 去掉 “about 7.8 GB → 2.4 GB” 里的 about（与三位有效数字冲突）。
+**S2** “per full-resolution keyframe” → “per full-resolution **frame**”（与原文 “per frame” 一致）。
+**S3** §V-E 两处 indicates 重复，第二处改 “is consistent with a semantic failure”。
+**S4** §III-C 改为 “The single lesson we took from all three systems is this: …”。
+**S5** “compressed into a 0.010 band” → “into a **band of width 0.010**”。
+
+**S6 未采纳 ±0.5 s（说明理由）**
+±0.5 s 只在“返回离事件最近的那一帧”时成立；我们的系统返回的是**得分最高**的帧，可能是相邻的
+另一帧，所以可保证的上界是一个采样间隔（1 s）。改为不带 ± 的事实陈述：
+“timestamps lie on a 1 s grid, so a reported time can differ from the true one by up to a
+sampling interval.” 这样既不夸大也不含糊。
+
+**可不改三条**（摘要 0.0036 kWh、表 V 表头 0.50/1.0、sweep 位置）同意保持。
+
+**闸门**：7 页、0 错误、0 Overfull、审计 0 DIFF / 0 SKIP。
