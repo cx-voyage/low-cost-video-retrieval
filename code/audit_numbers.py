@@ -254,8 +254,8 @@ def main():
         # 每条“答对”的成本
         per_correct = {f: float(idx[f]["build_seconds"]) / (float(idx[f]["recall@1"]) * 1000)
                        for f in (0.25, 1.0, 3.0)}
-        m = re.search(r"runs ([0-9.]+)\\,s at 0\.25\\,fps, ([0-9.]+)\\,s at 1\\,fps and "
-                      r"([0-9.]+)\\,s at 3\\,fps", flat)
+        m = re.search(r"costs ([0-9.]+)\\,s per correct retrieval at 0\.25\\,fps,\s+"
+                      r"([0-9.]+)\\,s at 1\\,fps and ([0-9.]+)\\,s at 3\\,fps", flat)
         if not m:
             print("  SKIP  cost per correct retrieval        正文没匹配到")
         else:
@@ -268,7 +268,7 @@ def main():
         rk = [x["ranks"]["1"] for x in qr]
         b25 = 100 * sum(1 for r in rk if r is not None and 2 <= r <= 5) / len(rk)
         b610 = 100 * sum(1 for r in rk if r is not None and 6 <= r <= 10) / len(rk)
-        m = re.search(r"--- ([0-9.]+)\\,pp of\s+them in ranks 2--5 and ([0-9.]+)\\,pp in 6--10",
+        m = re.search(r"--- ([0-9.]+)\\% of\s+them in ranks 2--5 and ([0-9.]+)\\% in 6--10",
                       flat)
         if m:
             check("rank bucket 2-5", float(m.group(1)), b25, tol=0.06)
