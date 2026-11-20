@@ -840,3 +840,217 @@ Captioning," arXiv:2404.17498, 2024, Table 5。同一张表里有两行零样本
 
 注意：删除 `.bbl` 是刻意的——Overleaf 和本地都会重新生成；仓库里保留它容易和新 `refs.bib`
 不一致。
+
+
+### 2026-11-20 复审 + 三处强化（全部只用已有数据，无新实验）
+
+**A. 修正一处与数据相反的断言（重要）**
+§VI-E 原写“long multi-clause captions dilute the text embedding”，但 1,000 条查询按词数统计
+R@1 是：1–5 词 24.8%、6–8 词 21.8%、9–11 词 36.0%、12–15 词 47.1%、16+ 词 46.3%
+（`results/query_ranks.json` 的 1 fps 排名 + 原始 caption）。**越长越好**，且这批 caption
+一个逗号都没有。已改为“21.8%（6–8 词）对 47.1%（12–15 词），我们读作具体性而非长度效应”。
+
+**B. 修正一处逻辑漏洞**
+原句“1 fps 是 recall 达到最大值一个标准误内的最低速率”不成立：0.5 fps（31.0%）也在
+3 fps（32.4%）的一个标准误（1.5 pp）内。改为用边际成本定义拐点：
+“低于它，每提升 1 pp 花 410–890 s；高于它，最后一步花 2,167 s 只换 0.2 pp”。
+
+**C. 三处零成本强化**
+1. §V-C 增加配对差值的 95% CI：1 vs 3 fps 为 **+0.2 pp [−1.1, +1.5]**，因此“可排除大于
+   约 1.5 pp 的增益”——比 p=0.88 更有信息量。CI 用 McNemar 不一致对计算（Wald），
+   已写进 `audit_numbers.py` 逐项核对。
+2. §VI-B 增加“每条答对查询的成本”：0.25 fps 0.90 s、1 fps 3.22 s、3 fps 12.12 s
+   （成本 ÷ 命中数），即顶层贵 3.8 倍只多答对 2 条。
+3. §VI-D 把 34.3 pp 拆开：2–5 名 23.4 pp、6–10 名 10.9 pp，因此 top-5 重排上限 23.4 pp
+   （→55.6%）、top-10 上限 34.3 pp（→66.5%）。
+
+**D. 措辞降级（逐句问“站得住吗”后的结果）**
+- “The only parameter that changes the cost is the sampling rate” → “The design parameter we
+  vary is the sampling rate”（max_frames、聚合方式也会改变成本）
+- “how much accuracy must be sacrificed” → “is given up”（实测并没有被迫牺牲）
+- “the accuracy is limited by the encoder” → “suggests that accuracy is limited…”（推论而非事实）
+- “marks the accuracy that a second stage could recover” → “bounds”
+- Fig.2 图注里“(p=0.12, shaded band)”把 p 值和阴影带混在一起 → 分开说明阴影带是 ±1 s.e.
+- “compute dominates by one order” 补成 “dominates memory by one order (and SSD by three)”
+
+**E. 页数**
+新增内容一度 7 页；删掉 4 处重复表述（Bobsled 与 §III-C 重复的“共享原则”、Craw 段的
+“cheapest point”一句、§V-B 里与 §IV-B 重复的查询成本、以及“No clip is used for training”）
+后回到 **6 页**。
+
+**F. 闸门**
+`audit_numbers.py` 新增 7 项断言（CI 上下界、三条每答对成本、两个排名档、两档 caption），
+当前 **0 DIFF / 0 SKIP**；9 条文献全部被引用；15 个交叉引用全部有标签；PDF 6 页 0 错误。
+
+
+### 2026-11-20 对照原始考核文件（考核(1).pdf）逐条检查
+
+**原文没有页数要求。** PDF 全文只有：任务 2 条、报告要求 3 条、参考资料 3 篇。
+“6~10 页”只出现在我们自己的 `notes/context.md`，是二手记录，不是官方要求——已作废。
+一般惯例：IEEE 双栏全文论文 6–8 页（IEEE 作者中心对 full paper 的表述），期刊 10–14 页；
+课程/考核报告常见 5–10 页。我们 **7 页**，属于正常区间，不需要为篇幅删内容。
+
+**逐条对照**
+
+| 考核要求 | 报告位置 | 状态 |
+|---|---|---|
+| 调研视频检索、总结流程 | §II（Craw/LOVO/Bobsled）+ §III-A 开头新增“五个阶段”总结 | ✅ 本轮补强 |
+| 分析成本开销、构建低成本系统、说明理由 | §III-B（三个决定及其代价）、§IV（五项成本、实测、边界）、§VI-B/C | ✅ |
+| 详尽叙述完整过程，重点写问题/困难/解决思路 | §V-F 新增“Problems Encountered”三条（3 fps 真相、休眠污染计时、单次计时 27%） | ✅ 本轮新增 |
+| 无法解决的问题要陈述并分析原因 | §V-F 末尾（30 fps 未跑及原因）、§VII Limitations | ✅ |
+| LaTeX + IEEE Transactions 模板 + PDF | IEEEtran journal，英文，7 页 | ✅ |
+| 代码上传 GitHub 并附链接 | 正文首页脚注加了仓库 URL | ✅ 本轮新增 |
+| 参考资料 3 篇 | 三篇全部被引用（外加 6 篇） | ✅ |
+
+**本轮改动**
+- §III-A 开头加“decode → sample → encode → index → query”五阶段总结（对应任务第 1 条）
+- 新增 §V-F “Problems Encountered and How They Were Resolved”（对应报告要求第 1 条）
+- 首页脚注加 GitHub 链接
+- 恢复两处此前被压缩掉的实质内容：§IV-A 的 “would otherwise have been idle”、
+  §III-C 的 PQ 压缩收益与 34.3 点重排空间的衔接
+- 未恢复三处（属于重复表述，加回来只会重复）：Bobsled 的“共享原则”句（§III-C 已说）、
+  §V-B 的查询成本句（§IV-B 已说）、“No clip is used for training”（§I 已说）
+- 为控制篇幅，压缩了 §II 三段背景介绍（保留三篇文献各自的关键事实与定位）
+
+**闸门**：7 页、0 错误、0 Overfull；`audit_numbers.py` 0 DIFF；9 条文献全部被引用。
+
+
+### 2026-11-20 按考核原文补强：贡献、过程、流程图对齐
+
+**1. GitHub 链接移到邮件**
+按谢承轩决定，报告内不加脚注，链接只放邮件正文（考核原文：“请将实现代码上传至 GitHub，
+并附上链接”，未规定位置）。报告里只保留“measurement scripts that produce every number”
+这一句指向仓库。
+
+**2. 贡献列表从三条改为四条，把三个创新点写进去**
+原来只写了系统、曲线、成本拆分，A/B/C 三个分析没进 contributions。现在第三条是
+“three analyses that turn that curve into decisions”，一次覆盖：
+- A 查询类型分层（8.6 pp > 1.7 pp）
+- B 边际预算（410–890 s/pp；2,167 s 换 0.2 pp）
+- C 价格参数化（2.8 / 0.06 CNY/h；7.7e6 帧内存墙）
+第四条保留成本拆分 + 10^7 帧规模边界。
+
+**3. 又抓到一处站不住的数字（已改）**
+§VI-A 原写“largest sampling-rate change we actually observe (1.8 pp)”。但 Table V 里
+scene 类从 32.8 到 37.5，跨度 4.7 pp（n=64，不显著，但数值上确实是最大的）。
+改为与**合并指标**的 1.7 pp 比较（8.6/1.7 = 5.1，仍成立）。贡献列表同步改为 1.7 pp。
+审计脚本新增三项断言：action-object gap、pooled range（贡献 + §VI-A）、每 pp 成本上下界。
+
+**4. §V-F 从 3 条扩成 5 条 + 3 个未解问题**
+按“环境 → 基准选择 → 数据 → 计时 → 推断”的顺序串起来（不是罗列）：
+1. huggingface.co 不通 → 用 hf-mirror 下载权重（`code/get_model.py` 第 23 行的 URL 可查）
+2. 第一个基准选 UCF-101，指标饱和 → 定量结论换 MSR-VTT，UCF 只作 sanity check
+3. 数据其实是 3 fps → 纠正标签 + 加保护
+4. 休眠污染计时 → 丢弃重跑
+5. 单次计时 27% 波动 → 噪声底 + 配对检验
+未解：30 fps（成本原因）、运动信息（帧级嵌入）、重排器（只有上界）。
+
+**5. 流程图**
+已有 Fig.1 就是流程图（离线 4 个框 + 在线 3 个框），不再新增第二张。改为在图注里把五个
+阶段与框中元素一一对应，并给 System Design 加 `\label{sec:design}` 以便引用。
+
+**6. 当前状态**
+7 页、0 错误、0 Overfull、审计 0 DIFF；9 条文献全部被引用。
+
+
+### 2026-11-20 贡献列表重排 + 流程图与文字对齐
+
+**1. 贡献四条改为等重**
+原来第三条把 A/B/C 三个分析连同数字全部塞进去（占 10 行），其余三条各 2–3 行，头重脚轻。
+现在：
+- 一：系统 + 脚本 + 日志（可复现）
+- 二：成本--精度曲线（12×、14×、1.7 pp、p=0.12、拐点 1 fps）
+- 三：三个把曲线变成决策的分析（只点名，不写数字）
+- 四：成本拆分 + 10^7 帧规模边界
+数字移到 §VI（它们被推导出来的地方），贡献列表只说明“做了什么”，避免同一数字在两处维护。
+
+**2. 链接放回正文**
+按谢承轩的意见，恢复一个脚注放仓库 URL。原来那句“measurement scripts that produce every
+number reported here”是在声明可复现性，没有链接就无法验证；现在声明与指针配套。
+
+**3. 图与“五个阶段”其实对不上**
+Fig.1 的框是：Video clip → Sample → ViT-B/32 → Matrix；Text query → Text tower →
+cosine/top-K。阶段划分是 decode+sample 合在一个框里，而 query 拆成两个框，硬说“五阶段”
+会与图不一致。处理：删掉“five stages”的声称，正文改成与图一一对应的描述
+（offline：解码采样→编码→入库；online：编码查询→与每一行比较→排序），图注同步改写。
+如需图里明确标 ①②③④⑤，需要重画 TikZ，暂未动。
+
+**4. 审计**
+新增 VI-A 的 action-object 差距与合并区间断言；修正两处因改写而失效的正则。
+当前 89 项 PASS、0 DIFF、0 SKIP。
+
+
+### 2026-11-20 Fig.1 重画：五步与框一一对应
+
+**问题**：只加编号不改框，第 1 步“decode + sample”仍横跨两个框（Video clip 与 Sample），
+图和文字的“五步”依旧对不上。
+
+**改法**
+- 把 “Sample 1 fps” 框改成 “Decode + sample 1 fps”（第 1 步合并成一个框，与文字一致）
+- 五个功能框各加一个编号徽标 ①②③④⑤，统一放在框的左下角
+- `Video clip` 与 `Text query` 保持不编号（它们是输入，不是步骤）
+
+**内容核对（一个没少）**
+Video clip ✓ / 1 of 30 frames ✓ / Decode + sample 1 fps ✓ / ViT-B/32 frozen ✓ /
+40 ms/frame ✓ / Matrix N×512 ✓ / 7.4 MB per hour ✓ / Text query ✓ / Text tower ✓ /
+60–100 ms ✓ / cosine similarity, then max → top-K ✓ / 两条箭头（离线链、Matrix→检索）✓
+
+**文字同步**
+§III-A 改为 “the video is decoded and sampled into frames (1), each frame is encoded (2) and the
+vectors are indexed (3); online, the query is encoded (4) and compared with every stored vector
+to rank the clips (5)”。
+图注改为按编号逐条说明，保留 512 维、N×512、无训练、实测成本四个信息点。
+
+**验证方式**：用 PyMuPDF 把 PDF 第 2 页渲染成 400 dpi 图片，人工检查徽标位置、文字是否被裁、
+箭头是否被挡；确认五枚徽标都落在框角、无重叠。
+
+**闸门**：7 页、0 错误、0 Overfull、审计 0 DIFF。
+
+
+### 2026-11-20 文字改回叙述版（编号只留在图上）
+
+§III-A 的递进编号写法（…frames (1), …encoded (2)…）读起来生硬，改回叙述句：
+
+> Offline, a clip is decoded and sampled into frames, each frame is encoded into a vector, and the
+> vectors are stored in an index; online, the query is encoded and compared with every stored vector
+> to rank the clips (Fig. 1).
+
+编号只保留在 Fig.1 的五枚徽标和图注里，两边不重复。
+
+**过程中遇到的问题**：main.pdf 被 PDF 阅读器占用，pdflatex 报 “I can't write on file
+main.pdf”，并把 main.aux 截断成 48 字节。处理：先以 `-jobname=main_new` 编译、替换成功后再
+正常跑两遍 pdflatex，恢复交叉引用；确认 PDF 无 `??`、[1]–[9] 全部出现。
+
+**闸门**：7 页、0 错误、0 Overfull、审计 0 DIFF。
+
+
+### 2026-11-20 终审（第三轮）：又抓到 3 处“最高级”用词不成立
+
+**1. “largest uncorrected change is 2.4 pp” → 实际 2.7 pp**
+R@10 五档为 64.1 / 65.3 / 66.5 / 66.8 / 65.2，最大两两差是 66.8−64.1 = **2.7**（0.25 vs 1.5），
+不是 2.4（0.25 vs 1.0）。§V-C 与 Table IV 图注均已改为
+“2.7 pp (0.25 against 1.5 fps, p=0.017)”。
+
+**2. “the largest change is the action class” 不成立**
+Table V 各类跨度：action 2.1、scene **4.7**、object 1.8。scene 才是最大。
+已改为不说“largest”，而说“the action class --- the one we expected to be most sensitive ---
+falls from 37.3% to 35.5% at 0.25 fps (p=0.34)”。这是“预期”而非“实测最大”，站得住。
+
+**3. “at most about one point of Recall@1” 低估**
+0.25→1.0 实际 1.5 pp。改为 “one and a half points”。
+
+**4. 顺带降级两处**
+- 开头 “Video has become the largest source of unstructured data in most organisations”
+  → “Video is now a large share of the unstructured data most organisations hold”（无出处的最高级）
+- 贡献里 “per-run logs” → “the experiment log”（仓库里是一个 log.md + 每次的 json，原词略夸大）
+
+**5. 去掉 “moves by 1.8 pp” 的表述**
+37.3% 与 35.5% 是四舍五入后的显示值，其差 1.8；原始数据差 1.86（会四舍五入成 1.9）。
+直接写“from 37.3% to 35.5%”，不再给差值，避免两位小数打架。
+
+**6. 审计加固**
+新增断言 “largest R@10 change” = 2.7（从 results.csv 直接算最大两两差），
+这类“largest/smallest”以后会被脚本拦住。
+
+**终审结果**：7 页、0 错误、0 Overfull；审计 0 DIFF / 0 SKIP；
+双基准核对：results.csv 五行 × 五个关键数字在 log.md 中全部找到，0 缺失。
