@@ -12,6 +12,8 @@
 """
 
 import csv
+import json
+import math
 import os
 import re
 import sys
@@ -158,7 +160,7 @@ def main():
         raw = m.group(1).replace("{,}", "").replace(",", "")
         check(label, float(raw), want, tol=tol)
 
-    claim("abstract rate span", r"across a(?:n)? ([0-9.]+)\$\\times\$ range of sampling rates", rate_span)
+    claim("abstract rate span", r"(?:across|over) a ([0-9.]+)\$\\times\$ range of sampling rates", rate_span)
     claim("abstract cost span", r"changes indexing cost by ([0-9.]+)\$\\times\$", cost_span, tol=0.5)
     claim("contrib cost span", r"indexing cost changes by ([0-9.]+)\$\\times\$", cost_span, tol=0.5)
     claim("abstract R@1 span", r"Recall@1 moves by ([0-9.]+)\\,pp", r1_span)
@@ -172,6 +174,37 @@ def main():
           float(idx[3.0]["build_seconds"]) / float(idx[1.0]["build_seconds"]))
     claim("3 fps frame ratio", r"frame count grows (?:by )?([0-9.]+)\$\\times\$ rather than",
           float(idx[3.0]["n_frames"]) / float(idx[1.0]["n_frames"]))
+
+    # 贡献列表与 §VI-A 的两处对比数字
+    act = float(qtype[(1.0, "action")]["recall@1"]) * 100
+    obj = float(qtype[(1.0, "object")]["recall@1"]) * 100
+    claim("VI-A action-object gap", r"a gap of ([0-9.]+)\\,pp \(\$z=2\.8\$", act - obj)
+    claim("VI-A pooled range", r"more than four times the ([0-9.]+)\\,pp that the pooled metric",
+          r1_span)
+
+    r10 = {f: float(x["recall@10"]) * 100 for f, x in idx.items()}
+    vals = list(r10.values())
+    max_r10 = max(abs(a - b) for i, a in enumerate(vals) for b in vals[i + 1:])
+    claim("largest R@10 change", r"largest uncorrected change is ([0-9.]+)\\,pp of Recall@10",
+          max_r10)
+
+    # 每 pp 成本的上下界（§VI-B 与贡献列表；只看 1 fps 以下的步长）
+    pairs = sorted(idx.values(), key=lambda x: float(x["fps"]))
+    costs = []
+    for a, b in zip(pairs, pairs[1:]):
+        if float(b["fps"]) > 1.0 + 1e-9:
+            continue
+        dsec = float(b["build_seconds"]) - float(a["build_seconds"])
+        dpp = (float(b["recall@1"]) - float(a["recall@1"])) * 100
+        if dpp > 1e-9:
+            costs.append(dsec / dpp)
+    print(f"  INFO  每 pp 成本 {min(costs):.0f}--{max(costs):.0f} s")
+    m = re.search(r"between ([0-9]+) and ([0-9]+)\\,s of", flat)
+    if m:
+        check("cost/point low", float(m.group(1)), min(costs), tol=1.5)
+        check("cost/point high", float(m.group(2)), max(costs), tol=1.5)
+    else:
+        print("  SKIP  cost per point bounds")
     claim("1.5->3 fps extra seconds", r"costs a further ([0-9\{\},]+)\\,s and returns ([0-9.]+)",
           float(idx[3.0]["build_seconds"]) - float(idx[1.5]["build_seconds"]), tol=0.55)
 
@@ -185,18 +218,77 @@ def main():
         with open(sig_path, encoding="utf-8", newline="") as f:
             for r in csv.DictReader(f):
                 a, b = sorted((float(r["rate_a"]), float(r["rate_b"])))
-                sig[(r["k"], a, b)] = (float(r["p"]), float(r["p_holm"]))
-        min_holm = min(v[1] for v in sig.values())
-        min_raw = min(v[0] for v in sig.values())
+                sig[(r["k"], a, b)] = r
+
+        def p_of(k, a, b):
+            return float(sig[(k, a, b)]["p"])
+
+        min_holm = min(float(v["p_holm"]) for v in sig.values())
+        min_raw = min(float(v["p"]) for v in sig.values())
         claim("p: 1.0 vs 0.25 R@1", r"paired test gives \$p=([0-9.]+)\$ for Recall@1",
-              sig[("R@1", 0.25, 1.0)][0], tol=0.006)
-        claim("p: endpoints 0.25 vs 3.0 R@1", r"cannot separate\s+from\s+zero \(\$p=([0-9.]+)\$\)",
-              sig[("R@1", 0.25, 3.0)][0], tol=0.006)
+              p_of("R@1", 0.25, 1.0), tol=0.006)
+        claim("p: endpoints 0.25 vs 3.0 R@1",
+              r"cannot separate (?:that difference )?from\s+zero \(\$p=([0-9.]+)\$\)",
+              p_of("R@1", 0.25, 3.0), tol=0.006)
         claim("smallest Holm-corrected p", r"smallest corrected \$p=([0-9.]+)\$", min_holm, tol=0.006)
-        claim("p: 1.0 vs 3.0 R@1", r"significant \(\$p=([0-9.]+)\$, \$p=[0-9.]+\$\)",
-              sig[("R@1", 1.0, 3.0)][0], tol=0.006)
-        claim("p: 1.0 vs 3.0 R@10", r"significant \(\$p=[0-9.]+\$, \$p=([0-9.]+)\$\)",
-              sig[("R@10", 1.0, 3.0)][0], tol=0.006)
+        claim("p: 1.0 vs 3.0 R@10", r"65\.2\\% \(\$p=([0-9.]+)\$\)",
+              p_of("R@10", 1.0, 3.0), tol=0.006)
+
+        # 配对差值的 95% CI（Wald，只用不一致对）
+        row = sig[("R@1", 1.0, 3.0)]
+        b01 = int(row["a_wrong_b_right"])
+        b10 = int(row["a_right_b_wrong"])
+        n_q = 1000
+        diff = (b01 - b10) / n_q * 100
+        nd = b01 + b10
+        se = math.sqrt(nd - (b01 - b10) ** 2 / n_q) / n_q * 100
+        lo, hi = diff - 1.96 * se, diff + 1.96 * se
+        m = re.search(r"confidence\s+interval of \$\[([-+0-9.]+),([-+0-9.]+)\]\$", flat)
+        if not m:
+            print("  SKIP  CI (1.0 vs 3.0 R@1)                正文没匹配到")
+        else:
+            check("CI lower (1.0 vs 3.0 R@1)", float(m.group(1)), lo, tol=0.15)
+            check("CI upper (1.0 vs 3.0 R@1)", float(m.group(2)), hi, tol=0.15)
+            print(f"  INFO  diff={diff:+.1f} pp, 95%CI [{lo:+.1f},{hi:+.1f}]")
+
+        # 每条“答对”的成本
+        per_correct = {f: float(idx[f]["build_seconds"]) / (float(idx[f]["recall@1"]) * 1000)
+                       for f in (0.25, 1.0, 3.0)}
+        m = re.search(r"runs ([0-9.]+)\\,s at 0\.25\\,fps, ([0-9.]+)\\,s at 1\\,fps and "
+                      r"([0-9.]+)\\,s at 3\\,fps", flat)
+        if not m:
+            print("  SKIP  cost per correct retrieval        正文没匹配到")
+        else:
+            for got, f in zip(m.groups(), (0.25, 1.0, 3.0)):
+                check(f"cost/correct {f:g} fps", float(got), per_correct[f], tol=0.02)
+
+        # 排名分档与 caption 长度的实测值
+        qr = json.load(open(os.path.join(ROOT, "results", "query_ranks.json"),
+                            encoding="utf-8"))["queries"]
+        rk = [x["ranks"]["1"] for x in qr]
+        b25 = 100 * sum(1 for r in rk if r is not None and 2 <= r <= 5) / len(rk)
+        b610 = 100 * sum(1 for r in rk if r is not None and 6 <= r <= 10) / len(rk)
+        m = re.search(r"--- ([0-9.]+)\\,pp of\s+them in ranks 2--5 and ([0-9.]+)\\,pp in 6--10",
+                      flat)
+        if m:
+            check("rank bucket 2-5", float(m.group(1)), b25, tol=0.06)
+            check("rank bucket 6-10", float(m.group(2)), b610, tol=0.06)
+        else:
+            print("  SKIP  rank buckets                     正文没匹配到")
+
+        def r1_of(words):
+            v = [1 if x["ranks"]["1"] == 1 else 0 for x in qr
+                 if len(x["caption"].split()) in words]
+            return 100 * sum(v) / len(v)
+
+        m = re.search(r"is ([0-9.]+)\\% for six to eight\s+words and ([0-9.]+)\\% for "
+                      r"twelve to fifteen", flat)
+        if m:
+            check("caption 6-8 words R@1", float(m.group(1)), r1_of(range(6, 9)), tol=0.06)
+            check("caption 12-15 words R@1", float(m.group(2)), r1_of(range(12, 16)), tol=0.06)
+        else:
+            print("  SKIP  caption-length buckets           正文没匹配到")
+
         print(f"  INFO  最小未校正 p={min_raw:.3f}，最小 Holm p={min_holm:.3f}"
               f"（{len(sig)} 对检验）")
 
