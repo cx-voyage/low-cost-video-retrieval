@@ -112,7 +112,7 @@ It partitions each keyframe into $K$ patches ($\approx$2{,}040 for 1080p with $3
 patches), encodes each patch into its own vector with a bounding box and an open-vocabulary class,
 and compresses the result with product quantisation (lossy vector compression) in an inverted file
 (a coarse, bucket-based index); separately, the authors report that keyframe selection alone
-reduces storage from about 8\,GB to 2.5\,GB. This yields localisation but multiplies the vector
+reduces storage from about 7.8\,GB to 2.4\,GB. This yields localisation but multiplies the vector
 count per frame by $K$. The
 offline cost is justified as invisible to users at query time, which from a total-cost view it is
 not.
@@ -224,8 +224,9 @@ produces those vectors.
 We also chose not to build several components that the comparison systems require. Craw runs a
 detector on every frame and never skips, because its queries are closed-set and structural;
 LOVO adds a re-ranking stage over object proposals. Both are evaluated on fixed-camera
-surveillance footage, whereas we target open-vocabulary retrieval over general web video. What
-the three systems share is one principle: call the expensive model on as few units as possible.
+surveillance footage, whereas we target open-vocabulary retrieval over general web video. The
+lesson we took from all three systems is a single principle: call the expensive model on as few
+units as possible.
 Craw does this with an inverted index and three filtering layers, LOVO with a coarse-to-fine
 recall stage, and this work by lowering the sampling rate itself, from 30 calls per second to
 one and from $K$ vectors per frame to one. Two components are deliberately left out: product
@@ -488,8 +489,11 @@ same queries, with the raw $p$ reported alongside the value corrected for the nu
 the sweep (Holm's method).
 
 \subsection{Problems Encountered, and What Remains Open}
-The protocol in this section is the end point of a longer process. Five problems shaped it, and each
-is documented in the repository log. The first was
+The protocol in this section is the end point of a longer process: we built an end-to-end pipeline
+on a small class-labelled subset, moved to MSR-VTT once that subset's metric saturated, and
+discovered from the stored timestamps that the source clips are themselves 3\,fps, which had
+silently reduced two of the requested rates. Five problems shaped the result, and each is
+documented in the repository log. The first was
 infrastructural: the model weights could not be downloaded from huggingface.co on this machine, so
 they were fetched from a mirror, a one-off cost that affects no measurement. The second changed the
 benchmark: the first end-to-end run used a 405-clip UCF-101 subset, where class labels make the
