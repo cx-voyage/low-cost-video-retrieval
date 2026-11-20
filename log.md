@@ -1252,3 +1252,46 @@ sampling interval.” 这样既不夸大也不含糊。
 **可不改三条**（摘要 0.0036 kWh、表 V 表头 0.50/1.0、sweep 位置）同意保持。
 
 **闸门**：7 页、0 错误、0 Overfull、审计 0 DIFF / 0 SKIP。
+
+
+### 2026-11-20 可读性三条 + 段落拆分
+
+**1. §III-A 给 CLIP 加同位语（采纳，合并重写）**
+原文两个同位语会挤在一起（CLIP 解释 + embedding 解释），合并为：
+“…passed through OpenCLIP ViT-B/32 [5], **a model trained to place an image and its caption in
+one vector space**. Each frame becomes a 512-dimensional embedding (a vector of 512 numbers),
+scaled to unit length…”
+—— 一个知识点的解释，不连堆两个括号。
+
+**2. “exhaustive cosine search” 的动作描述（未采纳，因为已有）**
+同一节后面已经写了 “scored against every frame by a dot product” 和 “the index is a single
+matrix and retrieval is one linear scan”。再加 “every query is compared against every stored
+vector” 是第三次重复。保持原样。
+
+**3. §V-A 随机基线提前解释（采纳）**
+“so random Recall@1 is 0.1%” → “so random Recall@1 is **1/1,000, i.e. 0.1%**”，读者不用等到
+§V-B 的 K/N 才明白 0.1% 从哪来。
+
+**4. 长段落拆分（采纳，纯换行，不改字）**
+- §V-C：拆成 4 段（假设+0.25 结果 / 统计检验 / 五档与成本、CI / 选点与预算）
+- §VI-B：拆成 3 段（阶梯成本 / 每答对成本 / 边际结论）
+- §VI-C：拆成 4 段（价格参数化 / 交叉点 / 部署假设 / 容量墙）
+只插入空行，句子与数字一字未改。
+
+**评审“不建议做”的三条同意**：不改口语、不全篇重写、不加外行背景段。
+
+**闸门**：7 页、0 错误、0 Overfull、审计 0 DIFF / 0 SKIP。
+
+
+### 2026-11-20 撤销 “1/1,000” 改动（避免冗余）
+
+评审建议在 §V-A 提前解释 0.1% 的来源；我加过 “random Recall@1 is 1/1,000, i.e. 0.1%”。
+谢承轩指出原文已经把因果写全（“each paired with one human-written caption … every query
+therefore has exactly one correct answer, so random Recall@1 is 0.1%”），再加 1/1,000 是同一
+意思的另一种写法。同意，已撤回为 “so random Recall@1 is 0.1%”。
+
+**保留**：§III-A 的 CLIP 同位语（“a model trained to place an image and its caption in one
+vector space”）。理由：全文说了文本塔编码、与每帧点积，但没交代两者为何能落在同一空间；
+这一句补的是机制链条，不是常识解释。
+
+**闸门**：7 页、0 错误、审计 0 DIFF / 0 SKIP。

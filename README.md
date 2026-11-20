@@ -10,6 +10,10 @@ much retrieval quality is left, and where does the remaining cost actually go?
 Everything is built from a **frozen** OpenCLIP ViT-B/32 encoder, **one frame per second**,
 and **exhaustive cosine search**. Nothing is trained or fine-tuned.
 
+**Report (PDF):** [`report/main.pdf`](report/main.pdf) · **Every number:**
+[`results/results.csv`](results/results.csv) · **Audit:**
+[`code/audit_numbers.py`](code/audit_numbers.py)
+
 ---
 
 ## Results
