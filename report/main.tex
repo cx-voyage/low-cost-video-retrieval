@@ -30,14 +30,15 @@ budget. We ask the complementary question: with zero training, zero annotation a
 single laptop CPU, how much accuracy is left, and where does the remaining cost go? We
 build a text-to-video retriever from a frozen OpenCLIP ViT-B/32 encoder, one frame per
 second, one 512-dimensional vector per frame, and exhaustive cosine search, and we
-characterise its cost--accuracy curve on MSR-VTT test 1k. Recall@1 is 32.2\%, within 1.5\,pp of
-the 30.7--31.2\% reported for zero-shot CLIP ViT-B/32 on this split \cite{ventura2024learning}, so
+characterise its cost--accuracy curve on MSR-VTT test 1k. Recall@1 is 32.2\%, within 1.5 percentage
+points (pp) of the 30.7--31.2\% reported for zero-shot CLIP ViT-B/32 on this split
+\cite{ventura2024learning}, so
 the pipeline is implemented correctly;
 indexing the 1,000 clips takes 1{,}035.8\,s on four CPU threads. Varying the sampling rate
 from 0.25 to 3.0\,fps --- the ceiling imposed by clips that are themselves stored at 3\,fps ---
-changes indexing cost by 14$\times$ but Recall@1 by only 1.7\,pp, which a paired test cannot separate
-from zero ($p=0.12$), which places the knee of the curve at 1\,fps and makes the sampling
-rate the cheapest available knob. Per hour of video, the operating point costs
+changes indexing cost by 14$\times$ but Recall@1 by only 1.7 percentage points (pp). A paired test
+cannot separate that difference from zero ($p=0.12$), so the knee of the curve sits at 1\,fps and
+the sampling rate is the cheapest available knob. Per hour of video, the operating point costs
 3.9--5.0 minutes of CPU time, 7.4\,MB of index and 0.0036\,kWh of electricity. A
 component-level benchmark shows that decoding accounts for roughly a tenth of the
 per-frame cost, so reducing the number of encoded frames, not the cost of video I/O, is
@@ -55,7 +56,7 @@ CPU inference
 \section{Introduction}
 % ------------------------------------------------------------
 
-Video has become the largest source of unstructured data in most organisations, and
+Video is now a large share of the unstructured data most organisations hold, and
 finding one specific moment in a large corpus is a routine need: the clip where a cyclist
 crosses a junction, or the moment a chart appears on screen. Systems that answer such
 queries well already exist. They also assume a well-provisioned pipeline: Craw indexes
@@ -71,14 +72,16 @@ times the encoder is called. A conventional pipeline samples 30 frames per secon
 hour of video costs 108{,}000 encoder calls. This paper asks what is left if that number is
 divided by thirty and nothing else is changed.
 
-Our contributions are threefold. First, a complete and reproducible retrieval system that
-requires no training, no annotation and no GPU, together with the measurement scripts that
-produce every number reported here. Second, a measured cost--accuracy curve on MSR-VTT:
-across a 12$\times$ range of sampling rates --- up to every frame the corpus contains --- indexing
-cost changes by 14$\times$ while Recall@1 moves by 1.7\,pp, which a paired test cannot separate from
-zero ($p=0.12$), so the knee of the curve sits at 1\,fps. Third, an account of where the cost actually sits --- a component-level benchmark
-that separates decoding from encoder computation --- and of the scale at which the design
-should stop being used on a CPU.
+Our contributions are fourfold. First, a complete and reproducible retrieval system that
+requires no training, no annotation and no GPU, with the measurement scripts and the experiment log
+that reproduce every number reported here.\footnote{\url{https://github.com/cx-voyage/low-cost-video-retrieval}}
+Second, a measured cost--accuracy curve on MSR-VTT over a 12$\times$ range of sampling rates:
+indexing cost changes by 14$\times$ while Recall@1 moves by 1.7\,pp (paired $p=0.12$), which
+places the knee at 1\,fps. Third, three analyses that turn that curve into decisions:
+query-type stratification, marginal budget allocation, and a price-parameterised comparison of
+storage against compute. Fourth, a decomposition of where the cost sits, separating decoding from
+encoder computation, and of the scale at which the design should leave a CPU, about
+$10^{7}$ frames.
 
 We report zero-shot results: the system is never trained on the target videos, and its Recall@1
 on MSR-VTT (32.2\%) is 32 points above the 0.1\% chance level. Four independent quantities --- frame
@@ -95,65 +98,57 @@ result is below supervised state-of-the-art; the trade is deliberate.
 % ------------------------------------------------------------
 
 \noindent\textbf{Craw: multi-level queries over large video corpora.}
-Craw unifies existence, dynamic and similarity queries over large-scale video datasets by
-representing video as Video Semantic Units (trajectories, inter-object interactions and
-temporal relations) and indexing them with a three-layer hybrid index that combines a
-keyword inverted index with a tiered cluster index \cite{craw2026}. It reports up to two orders of magnitude
-lower query latency than prior systems. However, it explicitly avoids frame skipping in order
-to preserve tracking accuracy, which makes index construction heavy, and its reliance on a
-closed-set detector limits queries to predefined object categories. Notably, Craw's two key
-mechanisms --- semantic-preserving segmentation and trajectory simplification --- pursue the
-same goal as our frame sampling: reducing the computation required per unit of video, albeit
-at a finer granularity. Our approach can therefore be read as the cheapest point on the same
-trade-off curve.
+Craw unifies existence, dynamic and similarity queries over large video datasets, representing
+video as Video Semantic Units (trajectories, interactions and temporal relations) and indexing
+them with a three-layer hybrid index \cite{craw2026}. It reports up to two orders of magnitude
+lower query latency than prior systems, but explicitly avoids frame skipping, which makes index
+construction heavy, and its closed-set detector limits queries to predefined objects. Its two key
+mechanisms --- segmentation and trajectory simplification --- pursue the same goal as our frame
+sampling: less computation per unit of video, at a finer granularity.
 
 \noindent\textbf{LOVO: object-level queries.}
-LOVO targets complex object queries, that is, retrieving segments that contain a specific
-object configuration such as a red car running side by side with another car \cite{lovo2025}. To support
-object-level localisation it partitions every keyframe into $K$ patches (roughly 2{,}040
-patches for a 1080p frame with $32\times32$ patches), encodes each patch independently into a
-768-dimensional vector, and predicts a bounding box and an open-vocabulary class embedding per
-patch. Vectors are compressed with product quantisation and indexed with an inverted file, and
-queries follow a coarse-recall then cross-modal rerank pipeline. This yields object-level
-precision but multiplies the number of vectors per frame by $K$; the index reaches the order of
-10\,GB for 30 million entities. The offline cost is justified by the observation that users are
-not affected at query time; from a total-cost perspective, however, that offline work remains a
-real expense.
+LOVO targets object-level queries, such as a red car running beside another car \cite{lovo2025}.
+It partitions each keyframe into $K$ patches ($\approx$2{,}040 for 1080p with $32\times32$
+patches), encodes each patch into its own vector with a bounding box and an open-vocabulary class,
+and compresses the result with product quantisation (lossy vector compression) in an inverted file
+(a coarse, bucket-based index). This yields localisation but multiplies the vector count per frame
+by $K$; the index reaches the order of 10\,GB for 30 million entities. The offline cost is
+justified as invisible to users at query time, which from a total-cost view it is not.
 
 \noindent\textbf{Bobsled: event patterns in streams.}
-Bobsled addresses complex event processing over video streams, matching temporal patterns such
-as a rolling stop followed by a right turn \cite{bobsled2025}. Rather than running an expensive recognition model
-on every clip, it first applies a lightweight proxy model to obtain a per-clip event
-distribution, then uses non-homogeneous Markov chains to estimate the probability that a window
-matches the query pattern and prunes hopeless windows, and finally decides which remaining clips
-are worth materialising with the expensive oracle model. It improves throughput by
-2.4$\times$--11.6$\times$ over the state of the art without noticeable accuracy loss.
-Bobsled is orthogonal to our work: it optimises throughput for streaming detection, whereas we
-target offline, open-vocabulary content retrieval. Both, however, share the same underlying
-strategy: avoid invoking the expensive model whenever a cheap signal can rule a candidate out.
+Bobsled matches temporal patterns over video streams, such as a rolling stop followed by a right
+turn \cite{bobsled2025}. Instead of running an expensive recogniser on every clip, it uses a cheap
+proxy to estimate a per-clip event distribution, prunes hopeless windows with non-homogeneous
+Markov chains, and materialises only the survivors, improving throughput by
+2.4$\times$--11.6$\times$ without noticeable accuracy loss. It is orthogonal to our work: it
+optimises streaming detection rather than offline open-vocabulary retrieval.
 
 \noindent\textbf{Positioning.}
 Overall, prior systems optimise the upper bound of query expressiveness under the assumption of
 a well-provisioned analytics pipeline. This work explores the opposite end of the design space:
 what can be achieved with zero training budget, zero annotation and commodity CPU hardware. Our
-contribution is therefore complementary rather than competitive: we quantify how much accuracy
-must be sacrificed to obtain an order-of-magnitude reduction in construction cost.
+contribution is therefore complementary rather than competitive: we quantify how much accuracy is
+given up to obtain an order-of-magnitude reduction in construction cost.
 
 % ------------------------------------------------------------
-\section{System Design}
+\section{System Design}\label{sec:design}
 % ------------------------------------------------------------
 
 \subsection{Overview}
-The system has three stages and no learned component beyond the frozen encoder
-(Fig.~\ref{fig:pipeline}). Offline, each
+A text-to-video retrieval system has an offline half and an online half. Offline, a clip is
+decoded and sampled into frames, each frame is encoded into a vector, and the vectors are stored
+in an index; online, the query is encoded and compared with every stored vector to rank the clips
+(Fig.~\ref{fig:pipeline}). Ours has no learned component beyond the frozen encoder. Offline, each
 clip is decoded at one frame per second and every sampled frame is passed through OpenCLIP
-ViT-B/32 \cite{cherti2023reproducible}, giving a 512-dimensional embedding that is
-L2-normalised and stored as one row of a float32 matrix, 2{,}048 bytes per frame. Online, a
-natural-language query is encoded by the text tower of the same model, scored against every
+ViT-B/32 \cite{cherti2023reproducible}, giving a 512-dimensional embedding --- a vector of 512
+numbers --- that is scaled to unit length and stored as one row of a float32 matrix,
+2{,}048 bytes per frame. Online, a
+natural-language query is encoded by the text tower (the text encoder) of the same model, scored
+against every
 frame by a dot product, reduced to one score per clip by taking the maximum over its frames,
 and the clips are then ranked. There is no index structure, no keyframe detection, no shot
 segmentation and no temporal model: the index is a single matrix and retrieval is one linear
-scan. The only parameter that changes the cost is the sampling rate, and every run writes its
+scan. The design parameter we vary is the sampling rate, and every run writes its
 configuration to a JSON file, so an index can always be traced back to the settings that
 produced it.
 
@@ -166,11 +161,13 @@ produced it.
               inner sep=2pt, text width=16mm, fill=black!4},
   net/.style={box, fill=black!16},
   arr/.style={-{Latex[length=2mm,width=1.5mm]}, thick},
-  lab/.style={font=\footnotesize, text=black!70, align=center}
+  lab/.style={font=\footnotesize, text=black!70, align=center},
+  stage/.style={circle, fill=black!65, text=white, inner sep=0.5pt,
+                font=\scriptsize\bfseries, minimum size=2.9mm}
 ]
 % ---- offline: indexing ----
 \node (v) [box] {Video\\clip};
-\node (s) [box, right=3mm of v] {Sample\\1\,fps};
+\node (s) [box, right=3mm of v] {Decode +\\sample 1\,fps};
 \node (e) [net, right=3mm of s] {ViT-B/32\\frozen};
 \node (m) [box, right=3mm of e] {Matrix\\$N\!\times\!512$};
 \node [lab, above=1mm of s] {1 of 30 frames};
@@ -188,12 +185,19 @@ produced it.
 \draw [arr] (q) -- (t);
 \draw [arr] (t) -- (c);
 \draw [arr] (m.south) -- (m.south |- c.north);
+% ---- stage badges ----
+\node [stage] at (s.south west) {1};
+\node [stage] at (e.south west) {2};
+\node [stage] at (m.south west) {3};
+\node [stage] at (t.south west) {4};
+\node [stage] at (c.south west) {5};
 \end{tikzpicture}}
-\caption{The pipeline. Only the two shaded boxes run a neural network, and both are used
-frozen: no training and no fine-tuning. Offline, each clip is decoded at 1\,fps and every
-sampled frame becomes a 512-dimensional unit vector, so the index is a single $N\times512$
-matrix. Online, a query costs one text embedding, one matrix--vector product and a max over
-the frames of each clip. Labels give measured per-unit costs (Section~\ref{sec:cost}).}
+\caption{The pipeline, numbered by stage: (1) decode the clip and sample one frame per second,
+(2) encode each frame with a frozen ViT-B/32 into a 512-dimensional unit vector, (3) store the
+vectors as one $N\times512$ matrix, (4) encode the query with the text tower, (5) compare it with
+every row and reduce to one score per clip. Only the two shaded boxes run a neural network, and
+both are used frozen: no training and no fine-tuning. Labels give measured per-unit costs
+(Section~\ref{sec:cost}).}
 \label{fig:pipeline}
 \end{figure}
 
@@ -204,7 +208,8 @@ dataset; our Recall@1 of 32.2\% is within 1.5\,pp of the 30.7--31.2\% that zero-
 pipelines report on the same split \cite{ventura2024learning}, which suggests that the remaining
 error comes from the encoder rather than from the pipeline.
 Second, we sample at 1\,fps, discarding 29 of every 30 frames; brief events can therefore be
-missed, although the ablation in Section~\ref{sec:fps} shows no significant loss at Recall@1 down
+missed, although the sampling-rate sweep in Section~\ref{sec:fps} shows no significant loss at
+Recall@1 down
 to 0.25\,fps, where Recall@10 falls by 2.4\,pp before correction for multiplicity. Third, one vector is stored per frame rather than per object, which removes
 localisation but cuts the number of encoder calls per frame from $K$ to one; LOVO, which keeps
 object-level vectors, pays on the order of $10^{3}$ times more per frame for that ability
@@ -219,8 +224,10 @@ the three systems share is one principle: call the expensive model on as few uni
 Craw does this with an inverted index and three filtering layers, LOVO with a coarse-to-fine
 recall stage, and this work by lowering the sampling rate itself, from 30 calls per second to
 one and from $K$ units per frame to one. Two components are deliberately left out: product
-quantisation, which changes the storage term rather than the compute term that dominates here, and
-a two-stage retrieve-then-rerank scheme, which we take up in Section~\ref{sec:discussion}.
+quantisation, which typically cuts storage by an order of magnitude at a small accuracy cost but
+changes the storage term rather than the compute term that dominates here, and a two-stage
+retrieve-then-rerank scheme, the natural extension of the 34.3-point gap between Recall@1 and
+Recall@10, which we take up in Section~\ref{sec:discussion}.
 
 % ------------------------------------------------------------
 \section{Cost Model}\label{sec:cost}
@@ -229,10 +236,10 @@ a two-stage retrieve-then-rerank scheme, which we take up in Section~\ref{sec:di
 \subsection{Five Cost Terms}
 The total cost decomposes into five terms: fixed capital (hardware), compute (encoding), storage
 (index), human (annotation and training) and access (the cheapest hardware able to run the system).
-We set fixed and access cost to zero because the machine was already owned and the system needs only
-a commodity laptop; this is an assumption about the deployment context, not a claim that no
-hardware is required. Human cost is zero because the encoder is used zero-shot. The two remaining
-design choices, sampling rate and aggregation, were fixed once by the ablation in
+We set fixed and access cost to zero because the machine was already owned and would otherwise
+have been idle; this is an assumption about the deployment context, not a claim that no hardware
+is required. Human cost is zero because the encoder is used zero-shot. The two remaining
+design choices, sampling rate and aggregation, were fixed once by the sweep in
 Section~\ref{sec:exp}, a one-off model selection rather than a per-query optimisation. What remains
 to be measured is therefore the compute and storage cost of indexing, which the next subsection
 quantifies.
@@ -251,7 +258,7 @@ $2.5\times10^{3}$ frames), that is 0.06--0.11\,s, whereas indexing the same 1{,}
 1{,}035.8\,s. The ratio is close to four orders of magnitude. Effort to reduce cost should
 therefore be directed at indexing rather than at query latency.
 
-\subsection{Measurement}
+\subsection{Measurement}\label{sec:measure}
 All timings were measured on the same 4-core laptop CPU described in Section~\ref{sec:exp}.
 UCF-101 (2{,}462 frames at 1\,fps) was indexed three times, giving 197.6, 207.1 and 251.1\,s, a
 median of 84\,ms per frame and a 27\% spread (max/min $-$ 1). MSR-VTT (16{,}036 frames) was indexed once, at
@@ -352,7 +359,7 @@ We evaluate on two datasets. MSR-VTT test 1k \cite{xu2016msrvtt} provides 1{,}00
 query therefore has exactly one correct answer, so random Recall@1 is 0.1\%. UCF-101
 \cite{soomro2012ucf101} is used only as a pipeline check: 405 clips from 10 action classes,
 queried by class name, with roughly 40 correct clips per query and a random Recall@10 that
-already reaches 65.5\%. No clip is used for training, because nothing is trained. Recall@K is
+already reaches 65.5\%. Recall@K is
 the fraction of queries whose correct clip appears in the top $K$ of the 1{,}000 (MSR-VTT) or
 405 (UCF-101) candidates, and all queries are run against the full corpus rather than a reduced
 candidate set.
@@ -361,9 +368,7 @@ candidate set.
 Indexing the 1{,}000 MSR-VTT test clips at 1\,fps yields 16{,}036 frame embeddings in
 1{,}035.8\,s (65\,ms per frame) and a 32.84\,MB index. Retrieval reaches Recall@1 of 32.2\%,
 Recall@5 of 55.6\% and Recall@10 of 66.5\%, against random baselines of 0.1\%, 0.5\% and 1.0\%
-respectively (Table~\ref{tab:main}). A single query costs 60--100\,ms for text encoding and
-1--6\,ms for the similarity search, so online cost is close to four orders of magnitude below
-indexing cost.
+respectively (Table~\ref{tab:main}).
 
 \begin{table}[t]
 \centering
@@ -397,18 +402,20 @@ only from 32.2\% to 30.7\%, while indexing cost fell by 3.7$\times$ (1{,}035.8\,
 277.5\,s) and the index shrank from 32.84\,MB to 8.90\,MB (Table~\ref{tab:fps},
 Fig.~\ref{fig:cost}). A paired test gives $p=0.16$ for Recall@1 between 1.0 and 0.25\,fps, and
 across the ten pairs that the five rates define nothing survives correction at either metric
-(smallest corrected $p=0.17$); the largest uncorrected change is 2.4\,pp of Recall@10
-(0.25 against 1.0\,fps), and it does not reappear against 3.0\,fps. We therefore read the sweep
+(smallest corrected $p=0.17$); the largest uncorrected change is 2.7\,pp of Recall@10
+(0.25 against 1.5\,fps, $p=0.017$), and it does not reappear against 3.0\,fps. We therefore read the sweep
 as flat at both metrics, which makes the sampling rate the cheapest knob to turn. We sweep five
 rates, 0.25, 0.5, 1.0, 1.5 and
 3.0\,fps, the last being the ceiling of this axis: the stored clips are themselves 3\,fps, so
 3.0\,fps indexes every frame except those of the twelve clips longer than 30\,s, cut at 90 frames
 (24 frames, 0.05\%). From 1.0 to 1.5\,fps the cost grows 1.7$\times$ (1{,}759.8\,s) and the index
 40\% (45.90\,MB); to 3.0\,fps it grows 3.8$\times$ (3{,}927.1\,s, 47{,}121 frames, 96.50\,MB) while
-Recall@1 moves 32.2\%$\rightarrow$32.4\% and Recall@10 66.5\%$\rightarrow$65.2\%, neither
-significant ($p=0.88$, $p=0.11$). The frame count grows 2.9$\times$ rather than 3$\times$ because
-1\,fps keeps $\lceil N/3\rceil$ frames per clip. We therefore select 1\,fps as the operating point:
-the lowest rate at which recall has reached its maximum within one standard error. A tighter budget
+Recall@1 moves 32.2\%$\rightarrow$32.4\%, a difference of $+0.2$\,pp with a 95\% confidence
+interval of $[-1.1,+1.5]$\,pp, so a gain larger than about 1.5\,pp is excluded; Recall@10 moves
+66.5\%$\rightarrow$65.2\% ($p=0.11$). The frame count grows 2.9$\times$ rather than 3$\times$ because
+1\,fps keeps $\lceil N/3\rceil$ frames per clip. We therefore select 1\,fps as the operating
+point: below it a point of Recall@1 costs 410--890\,s of indexing time, while above it the last
+step pays 2{,}167\,s for 0.2\,pp (Section~\ref{sec:discussion}). A tighter budget
 can use 0.25\,fps, which is 3.7$\times$ cheaper and 1.5\,pp worse at Recall@1; it is also the rate
 that loses most at Recall@10 (2.4\,pp), before any correction for multiplicity. Section~\ref{sec:discussion}
 repeats this ablation per query type and finds the same picture: the loss is not concentrated in
@@ -417,8 +424,8 @@ action-heavy queries, which would be the obvious place to look for one.
 \begin{table}[t]
 \centering
 \caption{Sampling-rate ablation on MSR-VTT ($n=1{,}000$ queries). No pairwise difference survives
-correction (smallest corrected $p=0.17$); the largest uncorrected change is 2.4\,pp of Recall@10
-(0.25 against 1.0\,fps).
+correction (smallest corrected $p=0.17$); the largest uncorrected change is 2.7\,pp of Recall@10
+(0.25 against 1.5\,fps).
 Clips are stored at 3\,fps, so 3.0\,fps is the ceiling: it indexes every frame except those of the
 twelve clips past 30\,s, cut at 90 frames (0.05\% of the index).}
 \label{tab:fps}
@@ -441,9 +448,9 @@ fps & Frames & Build (s) & Index (MB) & R@1 & R@5 & R@10 \\
 \caption{Accuracy versus indexing cost on MSR-VTT test 1k (zero-shot CLIP ViT-B/32, exhaustive
 search). Each point is a sampling rate; the horizontal axis is the measured indexing time for the
 same 1{,}000 clips (log scale). A 12$\times$ range of rates changes cost by 14$\times$ but
-Recall@1 by only 1.7\,pp, which a paired test between the endpoints cannot distinguish ($p=0.12$,
-shaded band), so
-higher rates buy no measurable accuracy and the knee sits at 1\,fps.}
+Recall@1 by only 1.7\,pp, which a paired test between the endpoints cannot distinguish ($p=0.12$);
+the shaded band is $\pm$1 standard error of Recall@1 around the operating point. Higher rates buy
+no measurable accuracy and the knee sits at 1\,fps.}
 \label{fig:cost}
 \end{figure}
 
@@ -456,7 +463,7 @@ was inconclusive on the UCF-101 subset, where the metric is saturated. Temporal 
 thus not an effective design variable at this granularity --- a conclusion that also explains why
 LOVO abandons frame-level representations in favour of patch-level ones \cite{lovo2025}.
 
-\subsection{Sanity Check on UCF-101}
+\subsection{Sanity Check on UCF-101}\label{sec:ucf}
 On the UCF-101 subset, Recall@1, @5 and @10 are identical (90\%), indicating that the single
 failing query cannot be recovered by increasing $K$. This confirms that the failure is semantic
 rather than a matter of ranking depth. Because only 10 classes are present, roughly 10\% of the
@@ -467,10 +474,33 @@ and draw all quantitative conclusions from MSR-VTT.
 \subsection{Timing and Statistical Conventions}
 The timing protocol, its 27\% run-to-run spread and the split between video decoding and encoder
 computation are reported in Section~\ref{sec:cost}. Every accuracy difference discussed below is therefore
-compared against the 1.5\,pp standard error of Recall@1 at $n=1{,}000$: differences of 1.5\,pp or
+compared against the 1.5\,pp standard error of Recall@1 at $n=1{,}000$ --- the uncertainty of a
+1,000-query estimate --- differences of 1.5\,pp or
 less are treated as unresolved, and borderline cases are resolved by a paired McNemar test on the
 same queries, with the raw $p$ reported alongside the value corrected for the number of tests in
-the sweep.
+the sweep (Holm's method).
+
+\subsection{Problems Encountered, and What Remains Open}
+Five problems shaped the protocol, and each is documented in the repository log. The first was
+infrastructural: the model weights could not be downloaded from huggingface.co on this machine, so
+they were fetched from a mirror, a one-off cost that affects no measurement. The second changed the
+benchmark: the first end-to-end run used a 405-clip UCF-101 subset, where class labels make the
+ground truth unambiguous, but its metric saturates (Section~\ref{sec:ucf}), so every quantitative
+claim moved to MSR-VTT and UCF-101 was kept as a sanity check only. The third concerned the data
+itself: the stored clips are 3\,fps, not the frame rate of the original recordings, so requesting
+2\,fps yielded 1.5\,fps; we detected the mismatch from the stored timestamps, relabelled every
+index, and added a guard that reports the effective rate whenever the request exceeds the source.
+The fourth concerned timing: one run was interrupted by a laptop suspend, which inflated its wall
+clock by hours, so we discarded it, repeated it with suspend disabled, and checked that the
+per-frame rate stayed between 77 and 90\,ms throughout. The fifth concerned inference: single-run
+timings vary by up to 27\% (Section~\ref{sec:measure}), so differences below that level are treated as
+noise and every claim about recall is tested pairwise on the same queries.
+
+Three questions remain open. We did not run 30\,fps, because it would take about two hours of
+encoding per hour of video on this laptop, so those entries remain projections rather than
+measurements. Motion remains invisible to a frame-level embedding, which is why a dunk query
+returns generic basketball clips. And the re-ranker exists only as an upper bound: we quantify the
+headroom but do not implement a second stage.
 
 % ------------------------------------------------------------
 \section{Discussion}\label{sec:discussion}
@@ -482,12 +512,12 @@ hide opposing effects. We therefore split the 1{,}000 queries into action (375),
 object (561) queries with a keyword decision list, and recompute Recall@$K$ per class from the
 same indexes --- the split costs no extra indexing --- at the four rates for which the labels were
 evaluated (0.25, 0.5, 1.0 and 1.5\,fps). Table~\ref{tab:qtype} gives the result.
-No class shows an effect at the 5\% level (all uncorrected $p>0.19$): the largest
-change is the action class at 0.25\,fps, where Recall@1 falls from 37.3\% to 35.5\% (McNemar
-$p=0.34$), well inside the 2.5\,pp standard error of a 375-query slice. What matters instead is the
+No class shows an effect at the 5\% level (all uncorrected $p>0.19$). The action class --- the one
+we expected to be most sensitive --- falls from 37.3\% to 35.5\% at 0.25\,fps
+($p=0.34$), well inside the 2.5\,pp standard error of a 375-query slice. What matters instead is the
 question: at 1\,fps action queries reach 37.3\% against 28.7\% for object queries, a gap of
-8.6\,pp ($z=2.8$, $p<0.01$), more than four times the largest sampling-rate change we actually
-observe (1.8\,pp).
+8.6\,pp ($z=2.8$, $p<0.01$), more than four times the 1.7\,pp that the pooled metric moves across
+the whole rate sweep.
 The cheap knob therefore removes cost without redistributing accuracy across query types, while
 what the user asks moves recall by almost nine points. Because the labels are produced by rules rather than manual annotation, and the scene slice is
 small ($n=64$), we treat the class-wise numbers as descriptive
@@ -520,7 +550,10 @@ selects a set of configurations that are statistically indistinguishable. We the
 increments directly. Moving from 0.25 to 0.5\,fps costs 267\,s of indexing per 1{,}000 clips and
 returns 0.3\,pp; moving from 0.5 to 1\,fps costs 492\,s and returns 1.2\,pp; moving from 1 to
 1.5\,fps costs 724\,s and returns 0.0\,pp; and the last step, to 3.0\,fps, costs a further
-2{,}167\,s and returns 0.2\,pp. A point of Recall@1 thus costs between 410 and 890\,s of
+2{,}167\,s and returns 0.2\,pp. Per correct retrieval the same ladder runs 0.90\,s at 0.25\,fps,
+3.22\,s at 1\,fps and 12.12\,s at 3\,fps: the top rate makes each correct answer 3.8 times more
+expensive for two additional correct queries out of a thousand. A point of Recall@1 thus costs
+between 410 and 890\,s of
 laptop time in the cheapest part of the curve, while the top of the range pays 2{,}167\,s for
 0.2\,pp, more than an order of magnitude worse. Any budget beyond roughly 1{,}040\,s per
 1{,}000 clips is therefore better spent
@@ -528,8 +561,8 @@ elsewhere: the same
 money applied to a second-stage re-ranker addresses the 34.3\,pp of headroom quantified in
 Section~\ref{sec:scale} instead of 0.2\,pp, because a re-ranker scores ten candidates per query
 rather than encoding the corpus again. This is the practical form of the trade-off: below 1\,fps
-the budget buys at most about one point of Recall@1, which sits at the edge of the noise band;
-above it the money is all but wasted.
+the budget buys at most about one and a half points of Recall@1, which sits at the edge of the
+noise band; above it the money is all but wasted.
 
 \subsection{When Does Storage Overtake Compute?}
 The common expectation is that storage eventually dominates the cost of a video index. For a
@@ -541,8 +574,9 @@ $5.1\times10^{-5}$\,CNY of memory (25\,CNY/GB) or $1.0\times10^{-6}$\,CNY of sol
 the other; the crossover is in the price. The two terms are equal at $P=2.8$\,CNY/h for a
 memory-resident index and at $P=0.06$\,CNY/h for an SSD index. Priced as electricity only --- which
 our own energy estimate in Section~\ref{sec:cost} puts at roughly 0.03\,CNY per machine hour --- storage
-dominates a memory-resident index by two orders of magnitude; priced as rented GPU-class time, tens
-of CNY per hour, compute dominates by one order of magnitude. Since our deployment assumes an
+dominates a memory-resident index by two orders of magnitude. Priced as rented GPU-class time, tens
+of CNY per hour, compute dominates memory by one order of magnitude (and solid-state storage by
+three). Since our deployment assumes an
 already-owned laptop, neither term is negligible, and the honest reading is that the ranking is a
 statement about how machine time is priced rather than about the corpus. What does grow with $N$ is
 capacity: 15.8\,GB holds $7.7\times10^{6}$ frames, about 2{,}140 hours of video at 1\,fps, and at
@@ -553,35 +587,36 @@ same, and off-the-shelf vector libraries already provide it \cite{johnson2019fai
 
 \subsection{Scale Limit and Measured Headroom}\label{sec:scale}
 Exhaustive search scales linearly: 1.2--5.8\,ms for $2.5\times10^{3}$ frames extrapolates to
-5--25\,s for $10^{7}$ frames, the scale at which approximate indexes become mandatory. This
+5--25\,s for $10^{7}$ frames, the scale at which approximate indexes --- search structures that
+examine only part of the corpus --- become mandatory. This
 delineates the regime in which our design is viable and explains why LOVO, which targets tens of
 millions of entities, devotes most of its engineering effort to index compression. In the other
-direction, 34.3\,pp of our queries place the correct clip between ranks 2 and 10, so a perfect
-re-ranker over the top-10 would lift Recall@1 to 66.5\%. This quantifies the headroom of the
+direction, 34.3\,pp of our queries place the correct clip between ranks 2 and 10 --- 23.4\,pp of
+them in ranks 2--5 and 10.9\,pp in 6--10. A perfect re-ranker over the top five could therefore
+recover at most 23.4\,pp, and one over the top ten 34.3\,pp, lifting Recall@1 to 55.6\% and
+66.5\% respectively. This quantifies the headroom of the
 coarse-to-fine architecture adopted by LOVO and motivates a cheap verification stage as future
 work.
 
 \subsection{Why Queries Fail}
-Failure analysis reveals three distinct causes rather than a single deficiency. First,
-genre-level captions such as ``cartoon show for kids'' are under-specified: many clips in the
-corpus are cartoons, so no visual evidence can single out the intended one. Second, queries that
-require reading on-screen content (``someone playing a game in a computer'') exceed what a
-whole-frame embedding can capture. Third, long multi-clause captions dilute the text embedding,
-so a query carrying three facts retrieves worse than a short query for any single one. Each cause
-points to a different remedy --- query rewriting, patch-level or OCR representations, and
-multi-vector queries --- which is why we do not attribute the failures to insufficient model
-capacity.
+Inspection of the failures points to two causes rather than to insufficient model capacity. First,
+under-specified captions such as ``cartoon show for kids'' cannot single out one clip when many
+clips in the corpus are cartoons: Recall@1 is 21.8\% for six to eight words and 47.1\% for twelve
+to fifteen, a gradient we read as specificity rather than as an effect of length. Second, queries that require reading on-screen content (``someone playing a game in a
+computer'') exceed what a whole-frame embedding can capture. The two causes point to different
+remedies --- query rewriting, and OCR or patch-level representations --- neither of which is a
+larger encoder.
 
 % ------------------------------------------------------------
 \section{Limitations}\label{sec:limits}
 % ------------------------------------------------------------
 
-Three limitations follow directly from the measurements. First, frame-level CLIP embeddings
+Three limitations bound this study. First, frame-level CLIP embeddings
 discard motion: a query for ``basketball dunk'' retrieves only generic basketball clips, with
 scores compressed into a 0.010 band. Second, the system cannot localise events precisely, since
 1\,fps bounds temporal resolution to one second; timestamps are therefore accurate to about
 $\pm$1\,s and no finer. Third, all results are zero-shot and single-stage; the 34.3\,pp gap
-between Recall@1 and Recall@10 marks the accuracy that a second stage could recover. Beyond
+between Recall@1 and Recall@10 bounds the accuracy that a second stage could recover. Beyond
 these, the boundary derived in Section~\ref{sec:boundary} is a property of the method rather than a defect: at
 roughly $10^{7}$ frames a query would take 5--25\,s, so either a GPU or an approximate index
 becomes necessary.
@@ -594,8 +629,9 @@ We measured what a video retrieval system costs when the budget is a laptop. Fre
 encoder, sampling one frame per second and searching exhaustively gives Recall@1 of 32.2\% on
 MSR-VTT, at 3.9--5.0 minutes of CPU time and 7.4\,MB per hour of video. The most useful result is
 negative: using every frame the stored clips contain instead of one per second, a 3$\times$
-increase in sampled frames, costs nearly four times more and buys nothing measurable, so
-the accuracy of this class of system is limited by the encoder rather than by the frame rate. A
+increase in sampled frames, costs nearly four times more and buys nothing measurable. This
+suggests that accuracy in this class of system is limited by the encoder rather than by the frame
+rate. A
 component-level benchmark confirms that the encoder, not video I/O, is the dominant term, which
 is why the sampling rate is the right knob to turn. Two extensions follow directly: a second-stage
 re-ranker, with an upper bound of 34.3 points on our data, and compression for corpora beyond
