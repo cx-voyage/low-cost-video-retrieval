@@ -61,7 +61,7 @@ finding one specific moment in a large corpus is a routine need: the clip where 
 crosses a junction, or the moment a chart appears on screen. Systems that answer such
 queries well already exist. They also assume a well-provisioned pipeline: Craw indexes
 large video collections on a machine with 128 CPU cores, 512\,GB of RAM and an RTX~4090
-\cite{craw2026}, and LOVO reports about 0.08\,s per full-resolution keyframe on an RTX~3090
+\cite{craw2026}, and LOVO reports about 0.08\,s per full-resolution frame on an RTX~3090
 \cite{lovo2025}. Because these figures are obtained on different hardware and input
 resolutions from ours, we do not compare accuracies with such systems; instead we characterise
 a different operating point, and Section~\ref{sec:related} explains why the two ends of the
@@ -112,7 +112,7 @@ It partitions each keyframe into $K$ patches ($\approx$2{,}040 for 1080p with $3
 patches), encodes each patch into its own vector with a bounding box and an open-vocabulary class,
 and compresses the result with product quantisation (lossy vector compression) in an inverted file
 (a coarse, bucket-based index); separately, the authors report that keyframe selection alone
-reduces storage from about 7.8\,GB to 2.4\,GB. This yields localisation but multiplies the vector
+reduces storage from 7.8\,GB to 2.4\,GB. This yields localisation but multiplies the vector
 count per frame by $K$. The
 offline cost is justified as invisible to users at query time, which from a total-cost view it is
 not.
@@ -225,7 +225,7 @@ We also chose not to build several components that the comparison systems requir
 detector on every frame and never skips, because its queries are closed-set and structural;
 LOVO adds a re-ranking stage over object proposals. Both are evaluated on fixed-camera
 surveillance footage, whereas we target open-vocabulary retrieval over general web video. The
-lesson we took from all three systems is a single principle: call the expensive model on as few
+single lesson we took from all three systems is this: call the expensive model on as few
 units as possible.
 Craw does this with an inverted index and three filtering layers, LOVO with a coarse-to-fine
 recall stage, and this work by lowering the sampling rate itself, from 30 calls per second to
@@ -426,8 +426,8 @@ point: below it a point of Recall@1 costs 410--890\,s of indexing time, while ab
 step pays 2{,}167\,s for 0.2\,pp (Section~\ref{sec:discussion}). A tighter budget
 can use 0.25\,fps, which is 3.7$\times$ cheaper and 1.5\,pp worse at Recall@1; it is also the rate
 that loses most at Recall@10 (2.4\,pp), before any correction for multiplicity. Section~\ref{sec:discussion}
-repeats this ablation per query type and finds the same picture: the loss is not concentrated in
-action-heavy queries, which would be the obvious place to look for one.
+repeats this ablation per query type and finds the same picture at Recall@1: the loss is not
+concentrated in action-heavy queries, which would be the obvious place to look for one.
 
 \begin{table}[t]
 \centering
@@ -473,7 +473,7 @@ LOVO abandons frame-level representations in favour of patch-level ones \cite{lo
 
 \subsection{Sanity Check on UCF-101}\label{sec:ucf}
 On the UCF-101 subset, Recall@1, @5 and @10 are identical (90\%), indicating that the single
-failing query cannot be recovered by increasing $K$. This indicates a semantic failure
+failing query cannot be recovered by increasing $K$. This is consistent with a semantic failure
 rather than a matter of ranking depth. Because only 10 classes are present, roughly 10\% of the
 corpus is relevant to any query and random Recall@10 already reaches 65.5\%; the metric therefore
 carries little discriminative power. We use this dataset exclusively as a pipeline sanity check
@@ -491,7 +491,7 @@ the sweep (Holm's method).
 \subsection{Problems Encountered, and What Remains Open}
 The protocol in this section is the end point of a longer process: we built an end-to-end pipeline
 on a small class-labelled subset, moved to MSR-VTT once that subset's metric saturated, and
-discovered from the stored timestamps that the source clips are themselves 3\,fps, which had
+discovered from the stored timestamps that the stored clips are themselves 3\,fps, which had
 silently reduced two of the requested rates. Five problems shaped the result, and each is
 documented in the repository log. The first was
 infrastructural: the model weights could not be downloaded from huggingface.co on this machine, so
@@ -524,13 +524,15 @@ hide opposing effects. We therefore split the 1{,}000 queries into action (375),
 object (561) queries with a keyword decision list, and recompute Recall@$K$ per class from the
 same indexes --- the split costs no extra indexing --- at the four rates for which the labels were
 evaluated (0.25, 0.5, 1.0 and 1.5\,fps). Table~\ref{tab:qtype} gives the result.
-No class shows an effect at the 5\% level (all uncorrected $p>0.19$). The action class --- the one
+No class shows an effect at the 5\% level on Recall@1 (all uncorrected $p\geq0.19$). At
+Recall@10 one comparison does: the action class between 0.5 and 1.5\,fps, 2.9\,pp, uncorrected
+$p=0.037$; it does not survive correction across the 36 class-pair-metric comparisons. The action class --- the one
 we expected to be most sensitive --- falls from 37.3\% to 35.5\% at 0.25\,fps
 ($p=0.34$), well inside the 2.5\,pp standard error of a 375-query slice. What matters instead is the
 question: at 1\,fps action queries reach 37.3\% against 28.7\% for object queries, a gap of
 8.6\,pp ($z=2.8$, $p<0.01$), more than four times the 1.7\,pp that the pooled metric moves across
 the whole rate sweep.
-The cheap knob therefore removes cost without redistributing accuracy across query types, while
+The cheap knob therefore removes cost without redistributing Recall@1 across query types, while
 what the user asks moves recall by almost nine points. Because the labels are produced by rules rather than manual annotation, and the scene slice is
 small ($n=64$), we treat the class-wise numbers as descriptive
 (Section~\ref{sec:limits}).
@@ -538,8 +540,9 @@ small ($n=64$), we treat the class-wise numbers as descriptive
 \begin{table}[t]
 \centering
 \caption{Query-type stratification on MSR-VTT ($n=1{,}000$); labels come from a keyword decision
-list, not manual annotation. Within a row, no sampling-rate difference reaches the 5\% level
-(all uncorrected $p>0.19$). Between rows, action queries beat object queries by 8.6\,pp at 1\,fps.}
+list, not manual annotation. Within a row, no sampling-rate difference in \emph{Recall@1} reaches
+the 5\% level (all uncorrected $p\geq0.19$). Between rows, action queries beat object queries by
+8.6\,pp at 1\,fps.}
 \label{tab:qtype}
 \begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}l r cccc c@{}}
 \toprule
@@ -594,7 +597,7 @@ statement about how machine time is priced rather than about the corpus. What do
 capacity: 15.8\,GB holds $7.7\times10^{6}$ frames, about 2{,}140 hours of video at 1\,fps, and at
 that size the index stops being resident in a commodity laptop.
 Compression then becomes mandatory, which is why LOVO invests in product quantisation at
-$3\times10^{7}$ entities while we can still afford float32 below the wall; the remedy here is the
+tens of millions of entities while we can still afford float32 below the wall; the remedy here is the
 same, and off-the-shelf vector libraries already provide it \cite{johnson2019faiss}.
 
 \subsection{Scale Limit and Measured Headroom}\label{sec:scale}
@@ -625,9 +628,9 @@ larger encoder.
 
 Three limitations bound this study. First, frame-level CLIP embeddings
 discard motion: a query for ``basketball dunk'' retrieves only generic basketball clips, with
-scores compressed into a 0.010 band. Second, the system cannot localise events precisely, since
-1\,fps bounds temporal resolution to one second; timestamps are therefore accurate to about
-$\pm$1\,s and no finer. Third, all results are zero-shot and single-stage; the 34.3\,pp gap
+scores compressed into a band of width 0.010. Second, the system cannot localise events precisely:
+timestamps lie on a 1\,s grid, so a reported time can differ from the true one by up to a sampling
+interval. Third, all results are zero-shot and single-stage; the 34.3\,pp gap
 between Recall@1 and Recall@10 bounds the accuracy that a second stage could recover. Beyond
 these, the boundary derived in Section~\ref{sec:boundary} is a property of the method rather than a defect: at
 roughly $10^{7}$ frames a query would take 5--25\,s, so either a GPU or an approximate index
