@@ -61,8 +61,8 @@ finding one specific moment in a large corpus is a routine need: the clip where 
 crosses a junction, or the moment a chart appears on screen. Systems that answer such
 queries well already exist. They also assume a well-provisioned pipeline: Craw indexes
 large video collections on a machine with 128 CPU cores, 512\,GB of RAM and an RTX~4090
-\cite{craw2026}, and LOVO reports about 0.08\,s per frame on an RTX~3090 for full-resolution
-keyframes \cite{lovo2025}. Because these figures are obtained on different hardware and input
+\cite{craw2026}, and LOVO reports about 0.08\,s per full-resolution keyframe on an RTX~3090
+\cite{lovo2025}. Because these figures are obtained on different hardware and input
 resolutions from ours, we do not compare accuracies with such systems; instead we characterise
 a different operating point, and Section~\ref{sec:related} explains why the two ends of the
 design space are complementary rather than competing.
@@ -228,7 +228,7 @@ surveillance footage, whereas we target open-vocabulary retrieval over general w
 the three systems share is one principle: call the expensive model on as few units as possible.
 Craw does this with an inverted index and three filtering layers, LOVO with a coarse-to-fine
 recall stage, and this work by lowering the sampling rate itself, from 30 calls per second to
-one and from $K$ units per frame to one. Two components are deliberately left out: product
+one and from $K$ vectors per frame to one. Two components are deliberately left out: product
 quantisation, which typically cuts storage by an order of magnitude at a small accuracy cost but
 changes the storage term rather than the compute term that dominates here, and a two-stage
 retrieve-then-rerank scheme, the natural extension of the 34.3-point gap between Recall@1 and
