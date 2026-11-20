@@ -61,9 +61,9 @@ finding one specific moment in a large corpus is a routine need: the clip where 
 crosses a junction, or the moment a chart appears on screen. Systems that answer such
 queries well already exist. They also assume a well-provisioned pipeline: Craw indexes
 large video collections on a machine with 128 CPU cores, 512\,GB of RAM and an RTX~4090
-\cite{craw2026}, and LOVO encodes object-level representations at about 0.08\,s per
-frame on an RTX~3090 \cite{lovo2025}. Because these figures are obtained on different
-hardware from ours, we do not compare accuracies with such systems; instead we characterise
+\cite{craw2026}, and LOVO reports about 0.08\,s per frame on an RTX~3090 for full-resolution
+keyframes \cite{lovo2025}. Because these figures are obtained on different hardware and input
+resolutions from ours, we do not compare accuracies with such systems; instead we characterise
 a different operating point, and Section~\ref{sec:related} explains why the two ends of the
 design space are complementary rather than competing.
 
@@ -111,8 +111,9 @@ LOVO targets object-level queries, such as a red car running beside another car 
 It partitions each keyframe into $K$ patches ($\approx$2{,}040 for 1080p with $32\times32$
 patches), encodes each patch into its own vector with a bounding box and an open-vocabulary class,
 and compresses the result with product quantisation (lossy vector compression) in an inverted file
-(a coarse, bucket-based index); the authors report that compression cuts storage from about
-8\,GB to 2.5\,GB. This yields localisation but multiplies the vector count per frame by $K$. The
+(a coarse, bucket-based index); separately, the authors report that keyframe selection alone
+reduces storage from about 8\,GB to 2.5\,GB. This yields localisation but multiplies the vector
+count per frame by $K$. The
 offline cost is justified as invisible to users at query time, which from a total-cost view it is
 not.
 
@@ -215,8 +216,9 @@ recording); brief events can therefore be missed, although the sampling-rate swe
 Section~\ref{sec:fps} shows no statistically significant loss at Recall@1 down to 0.25\,fps, where
 Recall@10 falls by 2.4\,pp before correction for multiplicity. Third, one vector is stored per frame
 rather than per object. This removes localisation but keeps the index small: LOVO keeps $K\approx
-2{,}040$ object vectors per keyframe \cite{lovo2025}, so for the same video its index is three
-orders of magnitude larger, even though a single forward pass produces those vectors.
+2{,}040$ object vectors per encoded frame \cite{lovo2025}, against our one, so its index is three
+orders of magnitude larger for the same number of frames, even though a single forward pass
+produces those vectors.
 
 \subsection{What We Deliberately Left Out}
 We also chose not to build several components that the comparison systems require. Craw runs a
@@ -261,6 +263,7 @@ $2.5\times10^{3}$ frames), that is 0.06--0.11\,s, whereas indexing the same 1{,}
 1{,}035.8\,s. The ratio is close to four orders of magnitude. Effort to reduce cost should
 therefore be directed at indexing rather than at query latency.
 
+
 \subsection{Measurement}\label{sec:measure}
 All timings were measured on the same 4-core laptop CPU described in Section~\ref{sec:exp}.
 UCF-101 (2{,}462 frames at 1\,fps) was indexed three times, giving 197.6, 207.1 and 251.1\,s, a
@@ -277,7 +280,7 @@ accounts for 77--84\% of an end-to-end run; the remainder is per-clip overhead t
 attribute, and the residual 16--23\% lies within the 27\% run-to-run spread. The micro-benchmark runs are 15--22\% faster
 than the full indexing runs above, which is also within that spread. Because the encoder term
 dominates, the number of encoded frames rather than the speed of video I/O is the quantity to
-reduce, which is what motivates the frame-level design.
+reduce, which is what motivates sampling at 1\,fps rather than 30\,fps.
 
 \subsection{Normalised Cost per Hour of Video}
 Normalised to one hour of video at 1\,fps, indexing costs 3{,}600 frames, 3.9--5.0 minutes of
@@ -291,6 +294,7 @@ What we did measure is that raising the sampling rate up to 3\,fps --- every fra
 clips contain --- produced no gain exceeding
 one standard error; 30\,fps was not run. Table~\ref{tab:perhour} collects the three operating
 points.
+
 
 \begin{table}[t]
 \centering
@@ -484,7 +488,8 @@ same queries, with the raw $p$ reported alongside the value corrected for the nu
 the sweep (Holm's method).
 
 \subsection{Problems Encountered, and What Remains Open}
-Five problems shaped the protocol, and each is documented in the repository log. The first was
+The protocol in this section is the end point of a longer process. Five problems shaped it, and each
+is documented in the repository log. The first was
 infrastructural: the model weights could not be downloaded from huggingface.co on this machine, so
 they were fetched from a mirror, a one-off cost that affects no measurement. The second changed the
 benchmark: the first end-to-end run used a 405-clip UCF-101 subset, where class labels make the
