@@ -268,8 +268,8 @@ def main():
         rk = [x["ranks"]["1"] for x in qr]
         b25 = 100 * sum(1 for r in rk if r is not None and 2 <= r <= 5) / len(rk)
         b610 = 100 * sum(1 for r in rk if r is not None and 6 <= r <= 10) / len(rk)
-        m = re.search(r"--- ([0-9.]+)\\% of\s+them in ranks 2--5 and ([0-9.]+)\\% in 6--10",
-                      flat)
+        m = re.search(r"ranks 2 and 10[^0-9]*([0-9.]+)\\% of\s+them in ranks 2--5 and "
+                      r"([0-9.]+)\\% in 6--10", flat)
         if m:
             check("rank bucket 2-5", float(m.group(1)), b25, tol=0.06)
             check("rank bucket 6-10", float(m.group(2)), b610, tol=0.06)
