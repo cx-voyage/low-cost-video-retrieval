@@ -78,7 +78,6 @@ index is a single float32 matrix; a query is one dot product.
 code/        Python scripts (download, index, search, evaluate, benchmark, plot)
 results/     results.csv, per-run metrics (JSON), timing CSVs, the cost–accuracy figure
 report/      LaTeX source, bibliography and compiled PDF of the paper
-notes/       working notes: report material, literature notes, review checklist
 log.md       raw experiment log, append-only (every run, including failed ones)
 env.ps1      activates the project virtual environment
 ```
@@ -218,7 +217,7 @@ The first two rows are measured, not asserted: see the sampling-rate ablation an
 
 ## Report
 
-* `report/main.pdf` — 6 pages, IEEE Transactions style
+* `report/main.pdf` — 7 pages, IEEE Transactions style
 * `report/main.tex` — LaTeX source (pipeline figure drawn with TikZ)
 * `report/refs.bib` — bibliography
 
