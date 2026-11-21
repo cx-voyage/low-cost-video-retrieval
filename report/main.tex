@@ -35,8 +35,7 @@ points (pp) of the 30.7\% reported for a frozen zero-shot CLIP ViT-B/32 baseline
 \cite{ventura2024learning}, so
 the pipeline is implemented correctly;
 indexing the 1,000 clips takes 1{,}035.8\,s on four CPU threads. Varying the sampling rate
-from 0.25 to 3.0\,fps --- the ceiling imposed by clips that are themselves stored at 3\,fps ---
-changes indexing cost by 14$\times$ but Recall@1 by only 1.7\,pp. A paired test
+from 0.25 to 3.0\,fps (the ceiling imposed by clips that are themselves stored at 3\,fps) changes indexing cost by 14$\times$ but Recall@1 by only 1.7\,pp. A paired test
 cannot separate that difference from zero ($p=0.12$), so the knee of the curve sits at 1\,fps and
 the sampling rate is the cheapest available knob. Per hour of video, the operating point costs
 3.9--5.0 minutes of CPU time, 7.4\,MB of index and 0.0036\,kWh of electricity. A
@@ -84,8 +83,7 @@ encoder computation, and of the scale at which the design should leave a CPU, ab
 $10^{7}$ frames.
 
 We report zero-shot results: the system is never trained on the target videos, and its Recall@1
-on MSR-VTT (32.2\%) is 32 points above the 0.1\% chance level. Four independent quantities --- frame
-count per clip, implied count of correct retrievals, index size and random baseline --- agree with
+on MSR-VTT (32.2\%) is 32 points above the 0.1\% chance level. Four independent quantities (frame count per clip, implied count of correct retrievals, index size and random baseline) agree with
 each other and with the raw predictions (Section~\ref{sec:exp}), which we take as the evidence
 that the pipeline is correct: a preprocessing or alignment error would drive the figure towards
 chance. These figures agree with the 30.7\% reported for a frozen zero-shot CLIP ViT-B/32 baseline
@@ -102,8 +100,7 @@ Craw unifies existence, dynamic and similarity queries over large video datasets
 video as Video Semantic Units (trajectories, interactions and temporal relations) and indexing
 them with a three-layer hybrid index \cite{craw2026}. It reports up to two orders of magnitude
 lower query latency than prior systems, but explicitly avoids frame skipping, which makes index
-construction heavy, and its closed-set detector limits queries to predefined objects. Its two key
-mechanisms --- segmentation and trajectory simplification --- pursue the same goal as our frame
+construction heavy, and its closed-set detector limits queries to predefined objects. Its two key mechanisms, segmentation and trajectory simplification, pursue the same goal as our frame
 sampling: less computation per unit of video, at a finer granularity.
 
 \noindent\textbf{LOVO: object-level queries.}
@@ -291,8 +288,7 @@ estimate for the whole laptop, not measured with a power meter) that is 0.0036\,
 7.4\,MB index is priced separately and is not included. Processing at 30\,fps would require
 108{,}000 frames, 2.0--2.5 hours and 221\,MB per hour of video, roughly 30$\times$ more on both
 axes, and these 30\,fps entries are projections from the frame count rather than measurements.
-What we did measure is that raising the sampling rate up to 3\,fps --- every frame the stored
-clips contain --- produced no gain exceeding
+What we did measure is that raising the sampling rate up to 3\,fps (every frame the stored clips contain) produced no gain exceeding
 one standard error; 30\,fps was not run. Table~\ref{tab:perhour} collects the three operating
 points.
 
@@ -314,8 +310,7 @@ Configuration & Frames & Indexing time & Index size \\
 \end{table}
 
 \subsection{Boundary of Validity}\label{sec:boundary}
-The model also delimits its own validity. Valuing machine time at 50\,CNY/h --- the high
-(GPU-rental) anchor of Section~\ref{sec:discussion} --- and assuming a
+The model also delimits its own validity. Valuing machine time at 50\,CNY/h (the high GPU-rental anchor of Section~\ref{sec:discussion}) and assuming a
 50$\times$ GPU speed-up, a 13{,}000\,CNY GPU repays itself at $N^{*}$ frames, where the
 per-frame saving is the measured 65--84\,ms. This places the crossover between
 $1.14\times10^{7}$ and $1.48\times10^{7}$ frames, that is 3{,}200--4{,}100 hours of video at
@@ -474,7 +469,7 @@ The choice between max- and mean-pooling of frame scores has no measurable effec
 single-shot nature of the clips: within a 15-second clip the visual content is largely
 consistent, so the maximum and the mean frame score are strongly correlated. The same comparison
 was inconclusive on the UCF-101 subset, where the metric is saturated. Temporal aggregation is
-thus not an effective design variable at this granularity --- a conclusion that also explains why
+thus not an effective design variable at this granularity, a conclusion that also explains why
 LOVO abandons frame-level representations in favour of patch-level ones \cite{lovo2025}.
 
 \subsection{Sanity Check on UCF-101}\label{sec:ucf}
@@ -488,8 +483,7 @@ and draw all quantitative conclusions from MSR-VTT.
 \subsection{Timing and Statistical Conventions}
 The timing protocol, its 27\% run-to-run spread and the split between video decoding and encoder
 computation are reported in Section~\ref{sec:cost}. Every accuracy difference discussed below is therefore
-compared against the 1.5\,pp standard error of Recall@1 at $n=1{,}000$ --- the uncertainty of a
-1,000-query estimate --- differences of 1.5\,pp or
+compared against the 1.5\,pp standard error of Recall@1 at $n=1{,}000$ (the uncertainty of a 1,000-query estimate); differences of 1.5\,pp or
 less are treated as unresolved, and borderline cases are resolved by a paired McNemar test on the
 same queries, with the raw $p$ reported alongside the value corrected for the number of tests in
 the sweep (Holm's method).
@@ -527,13 +521,11 @@ headroom but do not implement a second stage.
 \subsection{Does Frame Rate Hurt Some Queries More Than Others?}
 The flat curve of Fig.~\ref{fig:cost} averages over very different questions, and an average can
 hide opposing effects. We therefore split the 1{,}000 queries into action (375), scene (64) and
-object (561) queries with a keyword decision list, and recompute Recall@$K$ per class from the
-same indexes --- the split costs no extra indexing --- at the four rates for which the labels were
+object (561) queries with a keyword decision list, and recompute Recall@$K$ per class from the same indexes (the split costs no extra indexing) at the four rates for which the labels were
 evaluated (0.25, 0.5, 1.0 and 1.5\,fps). Table~\ref{tab:qtype} gives the result.
 No class shows an effect at the 5\% level on Recall@1 (all uncorrected $p\geq0.19$). At
 Recall@10 one comparison does: the action class between 0.5 and 1.5\,fps, 2.9\,pp, uncorrected
-$p=0.037$; it does not survive correction across the 36 class-pair-metric comparisons. The action class --- the one
-we expected to be most sensitive --- falls from 37.3\% to 35.5\% at 0.25\,fps
+$p=0.037$; it does not survive correction across the 36 class-pair-metric comparisons. The action class, the one we expected to be most sensitive, falls from 37.3\% to 35.5\% at 0.25\,fps
 ($p=0.34$), well inside the 2.5\,pp standard error of a 375-query slice. What matters instead is the
 question: at 1\,fps action queries reach 37.3\% against 28.7\% for object queries, a gap of
 8.6\,pp ($z=2.8$, $p<0.01$), more than four times the 1.7\,pp that the pooled metric moves across
@@ -618,12 +610,10 @@ same, and off-the-shelf vector libraries already provide it \cite{johnson2019fai
 
 \subsection{Scale Limit and Measured Headroom}\label{sec:scale}
 Exhaustive search scales linearly: 1.2--5.8\,ms for $2.5\times10^{3}$ frames extrapolates to
-5--25\,s for $10^{7}$ frames, the scale at which approximate indexes --- search structures that
-examine only part of the corpus --- become mandatory. This
+5--25\,s for $10^{7}$ frames, the scale at which approximate indexes, search structures that examine only part of the corpus, become mandatory. This
 delineates the regime in which our design is viable and explains why LOVO, which targets tens of
 millions of entities, devotes most of its engineering effort to index compression. In the other
-direction, 34.3\% of our queries place the correct clip between ranks 2 and 10 --- 23.4\% of
-them in ranks 2--5 and 10.9\% in 6--10. A perfect re-ranker over the top five could therefore
+direction, 34.3\% of our queries place the correct clip between ranks 2 and 10: 23.4\% of them in ranks 2--5 and 10.9\% in 6--10. A perfect re-ranker over the top five could therefore
 recover at most 23.4\,pp, and one over the top ten 34.3\,pp, lifting Recall@1 to 55.6\% and
 66.5\% respectively. This quantifies the headroom of the
 coarse-to-fine architecture adopted by LOVO and motivates a cheap verification stage as future
@@ -634,8 +624,7 @@ Inspection of the failures points to two causes rather than to insufficient mode
 under-specified captions such as ``cartoon show for kids'' cannot single out one clip when many
 clips in the corpus are cartoons: Recall@1 is 21.8\% for six to eight words and 47.1\% for twelve
 to fifteen, a gradient we read as specificity rather than as an effect of length. Second, queries that require reading on-screen content (``someone playing a game in a
-computer'') exceed what a whole-frame embedding can capture. The two causes point to different
-remedies --- query rewriting, and OCR or patch-level representations --- neither of which is a
+computer'') exceed what a whole-frame embedding can capture. The two causes point to different remedies (query rewriting, and OCR or patch-level representations), neither of which is a
 larger encoder.
 
 % ------------------------------------------------------------
